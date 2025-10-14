@@ -20,10 +20,15 @@ api.interceptors.response.use(
 export const adminAPI = {
   // Shops
   getShops: () => api.get('/api/admin/shops'),
-  syncProducts: (shopId) => api.post(`/api/admin/shops/${shopId}/sync-products`),
+  
+  // Product Selection
+  fetchShopifyProducts: (shopId) => api.get(`/api/admin/shops/${shopId}/shopify-products`),
+  addSelectedProducts: (shopId, productIds) => 
+    api.post(`/api/admin/shops/${shopId}/add-products`, { productIds }),
   
   // Products
   getProducts: (shopId = null) => api.get('/api/admin/products', { params: { shopId } }),
+  deleteProduct: (productId) => api.delete(`/api/admin/products/${productId}`),
   uploadLicenses: (productId, licenses) => 
     api.post(`/api/admin/products/${productId}/licenses/upload`, { licenses }),
   getLicenses: (productId, allocated = null) => 
