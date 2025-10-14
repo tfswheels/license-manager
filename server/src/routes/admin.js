@@ -4,6 +4,12 @@ import db from '../config/database.js';
 import { shopify } from '../config/shopify.js';
 import Papa from 'papaparse';
 import { manualAllocate } from '../services/orderService.js';
+import { 
+  getShopTemplates, 
+  setDefaultTemplate, 
+  validateTemplate 
+} from '../services/templateService.js';
+
 
 const router = express.Router();
 
@@ -301,6 +307,333 @@ router.post('/shops/:shopId/sync-products', async (req, res) => {
   } catch (error) {
     console.error('Product sync error:', error);
     res.status(500).json({ error: 'Failed to sync products' });
+  }
+});
+// ==========================================
+// TEMPLATE ENDPOINTS
+// ==========================================
+
+// Get all templates for a shop
+router.get('/templates', async (req, res) => {
+  try {
+    const { shopId } = req.query;
+
+    if (!shopId) {
+      return res.status(400).json({ error: 'Shop ID required' });
+    }
+
+    const templates = await getShopTemplates(parseInt(shopId));
+    res.json(templates);
+
+  } catch (error) {
+    console.error('Error fetching templates:', error);
+    res.status(500).json({ error: 'Failed to fetch templates' });
+  }
+});
+
+// Get single template
+router.get('/templates/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [templates] = await db.execute(
+      'SELECT * FROM email_templates WHERE id = ?',
+      [id]
+    );
+
+    if (templates.length === 0) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+
+    res.json(templates[0]);
+
+  } catch (error) {
+    console.error('Error fetching template:', error);
+    res.status(500).json({ error: 'Failed to fetch template' });
+  }
+});
+
+// Create new template
+router.post('/templates', async (req, res) => {
+  try {
+    const {
+      shopId,
+      templateName,
+      emailSubject,
+      emailHtmlTemplate,
+      emailTextTemplate,
+      isDefault
+    } = req.body;
+
+    // Validate required fields
+    if (!shopId || !templateName || !emailSubject || !emailHtmlTemplate || !emailTextTemplate) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Validate HTML
+    const validation = validateTemplate(emailHtmlTemplate);
+    if (!validation.valid) {
+      return res.status(400).json({ 
+        error: 'Invalid template HTML', 
+        details: validation.errors 
+      });
+    }
+
+    const connection = await db.getConnection();
+
+    try {
+      await connection.beginTransaction();
+
+      // If this should be default, unset other defaults
+      if (isDefault) {
+        await connection.execute(
+          'UPDATE email_templates SET is_default = FALSE WHERE shop_id = ?',
+          [shopId]
+        );
+      }
+
+      const [result] = await connection.execute(
+        `INSERT INTO email_templates 
+         (shop_id, template_name, is_default, email_subject, email_html_template, email_text_template)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [shopId, templateName, isDefault || false, emailSubject, emailHtmlTemplate, emailTextTemplate]
+      );
+
+      await connection.commit();
+
+      res.json({ 
+        success: true, 
+        templateId: result.insertId,
+        validation 
+      });
+
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+
+  } catch (error) {
+    console.error('Error creating template:', error);
+    res.status(500).json({ error: 'Failed to create template' });
+  }
+});
+
+// Update template
+router.put('/templates/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      templateName,
+      emailSubject,
+      emailHtmlTemplate,
+      emailTextTemplate
+    } = req.body;
+
+    // Validate HTML
+    const validation = validateTemplate(emailHtmlTemplate);
+    if (!validation.valid) {
+      return res.status(400).json({ 
+        error: 'Invalid template HTML', 
+        details: validation.errors 
+      });
+    }
+
+    await db.execute(
+      `UPDATE email_templates 
+       SET template_name = ?, 
+           email_subject = ?, 
+           email_html_template = ?, 
+           email_text_template = ?,
+           updated_at = NOW()
+       WHERE id = ?`,
+      [templateName, emailSubject, emailHtmlTemplate, emailTextTemplate, id]
+    );
+
+    res.json({ 
+      success: true, 
+      message: 'Template updated',
+      validation 
+    });
+
+  } catch (error) {
+    console.error('Error updating template:', error);
+    res.status(500).json({ error: 'Failed to update template' });
+  }
+});
+
+// Delete template (with reassignment)
+router.delete('/templates/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reassignTemplateId } = req.body;
+
+    const connection = await db.getConnection();
+
+    try {
+      await connection.beginTransaction();
+
+      // Check if template is default
+      const [template] = await connection.execute(
+        'SELECT is_default, shop_id FROM email_templates WHERE id = ?',
+        [id]
+      );
+
+      if (template.length === 0) {
+        await connection.rollback();
+        return res.status(404).json({ error: 'Template not found' });
+      }
+
+      if (template[0].is_default) {
+        await connection.rollback();
+        return res.status(400).json({ 
+          error: 'Cannot delete default template. Set another template as default first.' 
+        });
+      }
+
+      // Reassign products to new template (or NULL for default)
+      if (reassignTemplateId) {
+        await connection.execute(
+          'UPDATE products SET email_template_id = ? WHERE email_template_id = ?',
+          [reassignTemplateId, id]
+        );
+      } else {
+        await connection.execute(
+          'UPDATE products SET email_template_id = NULL WHERE email_template_id = ?',
+          [id]
+        );
+      }
+
+      // Delete template
+      await connection.execute('DELETE FROM email_templates WHERE id = ?', [id]);
+
+      await connection.commit();
+
+      res.json({ success: true, message: 'Template deleted' });
+
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+
+  } catch (error) {
+    console.error('Error deleting template:', error);
+    res.status(500).json({ error: 'Failed to delete template' });
+  }
+});
+
+// Set template as default
+router.post('/templates/:id/set-default', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Get template's shop_id
+    const [templates] = await db.execute(
+      'SELECT shop_id FROM email_templates WHERE id = ?',
+      [id]
+    );
+
+    if (templates.length === 0) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+
+    await setDefaultTemplate(parseInt(id), templates[0].shop_id);
+
+    res.json({ success: true, message: 'Template set as default' });
+
+  } catch (error) {
+    console.error('Error setting default template:', error);
+    res.status(500).json({ error: 'Failed to set default template' });
+  }
+});
+
+// Validate template (for preview/testing)
+router.post('/templates/validate', async (req, res) => {
+  try {
+    const { emailHtmlTemplate } = req.body;
+
+    if (!emailHtmlTemplate) {
+      return res.status(400).json({ error: 'HTML template required' });
+    }
+
+    const validation = validateTemplate(emailHtmlTemplate);
+
+    res.json(validation);
+
+  } catch (error) {
+    console.error('Error validating template:', error);
+    res.status(500).json({ error: 'Failed to validate template' });
+  }
+});
+
+// Assign template to product
+router.put('/products/:productId/template', async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const { templateId } = req.body;
+
+    // templateId can be null to use default
+    await db.execute(
+      'UPDATE products SET email_template_id = ? WHERE id = ?',
+      [templateId || null, productId]
+    );
+
+    res.json({ success: true, message: 'Template assigned to product' });
+
+  } catch (error) {
+    console.error('Error assigning template:', error);
+    res.status(500).json({ error: 'Failed to assign template' });
+  }
+});
+
+// Bulk assign template to products
+router.post('/products/bulk-assign-template', async (req, res) => {
+  try {
+    const { productIds, templateId } = req.body;
+
+    if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
+      return res.status(400).json({ error: 'Product IDs required' });
+    }
+
+    const placeholders = productIds.map(() => '?').join(',');
+
+    await db.execute(
+      `UPDATE products SET email_template_id = ? WHERE id IN (${placeholders})`,
+      [templateId || null, ...productIds]
+    );
+
+    res.json({ 
+      success: true, 
+      message: `Template assigned to ${productIds.length} products` 
+    });
+
+  } catch (error) {
+    console.error('Error bulk assigning template:', error);
+    res.status(500).json({ error: 'Failed to bulk assign template' });
+  }
+});
+
+// Get products using a specific template
+router.get('/templates/:id/products', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [products] = await db.execute(
+      `SELECT p.id, p.product_name, p.shopify_product_id
+       FROM products p
+       WHERE p.email_template_id = ?
+       ORDER BY p.product_name ASC`,
+      [id]
+    );
+
+    res.json(products);
+
+  } catch (error) {
+    console.error('Error fetching template products:', error);
+    res.status(500).json({ error: 'Failed to fetch products' });
   }
 });
 

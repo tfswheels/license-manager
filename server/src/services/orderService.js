@@ -1,3 +1,4 @@
+// server/src/services/orderService.js
 import db from '../config/database.js';
 import { sendLicenseEmail } from './emailService.js';
 import { checkInventoryAlerts } from './inventoryService.js';
@@ -76,11 +77,14 @@ export async function processOrder(shopDomain, orderData) {
           [licenses.length, orderItemId]
         );
 
+        // Send email with template support
         await sendLicenseEmail({
           email: orderData.email,
           firstName: orderData.customer?.first_name || 'Customer',
+          lastName: orderData.customer?.last_name || '',
           orderNumber: orderData.order_number || orderData.name,
           productName: lineItem.title,
+          productId: dbProductId, // Pass product ID for template lookup
           licenses: licenses.map(l => l.license_key)
         });
 
@@ -88,34 +92,24 @@ export async function processOrder(shopDomain, orderData) {
           `INSERT INTO email_logs (order_id, order_item_id, customer_email, 
             licenses_sent, email_status)
            VALUES (?, ?, ?, ?, ?)`,
-          [orderId, orderItemId, orderData.email, 
-           JSON.stringify(licenses.map(l => l.license_key)), 'sent']
+          [orderId, orderItemId, orderData.email, JSON.stringify(licenses.map(l => l.license_key)), 'sent']
         );
 
         await connection.execute(
-          `UPDATE order_items SET email_sent = TRUE, email_sent_at = CURRENT_TIMESTAMP 
-           WHERE id = ?`,
+          `UPDATE order_items SET email_sent = TRUE, email_sent_at = NOW() WHERE id = ?`,
           [orderItemId]
         );
 
-        console.log(`✅ Allocated ${licenses.length} licenses for product ${dbProductId}`);
+        await checkInventoryAlerts(connection, dbProductId);
       } else {
-        console.error(`❌ No licenses available for product ${dbProductId}`);
-        
-        await connection.execute(
-          `INSERT INTO email_logs (order_id, order_item_id, customer_email, 
-            email_status, error_message)
-           VALUES (?, ?, ?, ?, ?)`,
-          [orderId, orderItemId, orderData.email, 'failed', 
-           'No licenses available']
-        );
+        console.warn(`⚠️ Not enough licenses for product ${lineItem.title}`);
       }
-
-      await checkInventoryAlerts(connection, dbProductId);
     }
 
     await connection.commit();
     console.log(`✅ Order ${orderData.order_number} processed successfully`);
+
+    return { success: true, orderId };
 
   } catch (error) {
     await connection.rollback();
@@ -128,63 +122,59 @@ export async function processOrder(shopDomain, orderData) {
 
 async function allocateLicenses(connection, productId, orderId, quantity) {
   const [availableLicenses] = await connection.execute(
-    `SELECT id, license_key 
-     FROM licenses 
+    `SELECT id, license_key FROM licenses 
      WHERE product_id = ? AND allocated = FALSE 
-     ORDER BY id ASC
      LIMIT ?`,
     [productId, quantity]
   );
 
   if (availableLicenses.length < quantity) {
-    console.warn(`⚠️ Requested ${quantity} licenses, only ${availableLicenses.length} available`);
+    console.warn(
+      `Only ${availableLicenses.length} of ${quantity} licenses available for product ${productId}`
+    );
+  }
+
+  if (availableLicenses.length === 0) {
+    return [];
   }
 
   const licenseIds = availableLicenses.map(l => l.id);
-  
-  if (licenseIds.length > 0) {
-    await connection.execute(
-      `UPDATE licenses 
-       SET allocated = TRUE, order_id = ?, allocated_at = CURRENT_TIMESTAMP 
-       WHERE id IN (${licenseIds.map(() => '?').join(',')})`,
-      [orderId, ...licenseIds]
-    );
-  }
+  const placeholders = licenseIds.map(() => '?').join(',');
+
+  await connection.execute(
+    `UPDATE licenses 
+     SET allocated = TRUE, order_id = ?, allocated_at = NOW() 
+     WHERE id IN (${placeholders})`,
+    [orderId, ...licenseIds]
+  );
 
   return availableLicenses;
 }
 
 export async function manualAllocate(orderId) {
   const connection = await db.getConnection();
-  
+
   try {
     await connection.beginTransaction();
 
-    const [orders] = await connection.execute(
-      `SELECT o.*, s.shop_domain 
-       FROM orders o 
-       JOIN shops s ON o.shop_id = s.id 
-       WHERE o.id = ?`,
-      [orderId]
-    );
-
-    if (orders.length === 0) {
-      throw new Error('Order not found');
-    }
-
-    const order = orders[0];
-
     const [orderItems] = await connection.execute(
-      `SELECT oi.*, p.product_name 
-       FROM order_items oi 
-       JOIN products p ON oi.product_id = p.id 
+      `SELECT oi.*, o.customer_email, o.customer_first_name, o.customer_last_name, 
+              o.order_number, p.product_name, p.id as product_id
+       FROM order_items oi
+       JOIN orders o ON oi.order_id = o.id
+       JOIN products p ON oi.product_id = p.id
        WHERE oi.order_id = ? AND oi.licenses_allocated < oi.quantity`,
       [orderId]
     );
 
+    if (orderItems.length === 0) {
+      await connection.commit();
+      return { success: true, message: 'All licenses already allocated' };
+    }
+
     for (const item of orderItems) {
       const needed = item.quantity - item.licenses_allocated;
-      
+
       const licenses = await allocateLicenses(
         connection,
         item.product_id,
@@ -200,28 +190,39 @@ export async function manualAllocate(orderId) {
           [licenses.length, item.id]
         );
 
+        // Send email with template support
         await sendLicenseEmail({
-          email: order.customer_email,
-          firstName: order.customer_first_name || 'Customer',
-          orderNumber: order.order_number,
+          email: item.customer_email,
+          firstName: item.customer_first_name || 'Customer',
+          lastName: item.customer_last_name || '',
+          orderNumber: item.order_number,
           productName: item.product_name,
+          productId: item.product_id, // Pass product ID for template lookup
           licenses: licenses.map(l => l.license_key)
         });
 
         await connection.execute(
-          `UPDATE order_items 
-           SET email_sent = TRUE, email_sent_at = CURRENT_TIMESTAMP 
-           WHERE id = ?`,
+          `INSERT INTO email_logs (order_id, order_item_id, customer_email, 
+            licenses_sent, email_status)
+           VALUES (?, ?, ?, ?, ?)`,
+          [orderId, item.id, item.customer_email, JSON.stringify(licenses.map(l => l.license_key)), 'sent']
+        );
+
+        await connection.execute(
+          `UPDATE order_items SET email_sent = TRUE, email_sent_at = NOW() WHERE id = ?`,
           [item.id]
         );
       }
     }
 
     await connection.commit();
-    return { success: true };
+    console.log(`✅ Manual allocation completed for order ${orderId}`);
+
+    return { success: true, message: 'Licenses allocated and sent' };
 
   } catch (error) {
     await connection.rollback();
+    console.error('Manual allocation error:', error);
     throw error;
   } finally {
     connection.release();

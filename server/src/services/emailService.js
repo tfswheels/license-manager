@@ -1,80 +1,42 @@
+// server/src/services/emailService.js
 import sgMail from '@sendgrid/mail';
 import dotenv from 'dotenv';
+import { getTemplateForProduct, renderTemplate, formatLicenseKeys } from './templateService.js';
 
 dotenv.config();
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-export async function sendLicenseEmail({ email, firstName, orderNumber, productName, licenses }) {
+export async function sendLicenseEmail({ 
+  email, 
+  firstName, 
+  lastName,
+  orderNumber, 
+  productName, 
+  productId,
+  licenses 
+}) {
   try {
-    const licenseList = licenses.map((key, index) => 
-      `${index + 1}. ${key}`
-    ).join('\n');
+    // Get template for this product
+    const template = await getTemplateForProduct(productId);
 
-    const htmlContent = `
-<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background-color: #4CAF50; color: white; padding: 20px; text-align: center; }
-    .content { background-color: #f9f9f9; padding: 30px; border-radius: 5px; margin-top: 20px; }
-    .license-box { background-color: white; border: 2px solid #4CAF50; padding: 20px; margin: 20px 0; border-radius: 5px; }
-    .license-key { font-family: 'Courier New', monospace; font-size: 16px; color: #2196F3; word-break: break-all; }
-    .footer { text-align: center; margin-top: 30px; font-size: 12px; color: #666; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>Your License Key${licenses.length > 1 ? 's' : ''}</h1>
-    </div>
-    <div class="content">
-      <p>Hey ${firstName},</p>
-      
-      <p>Thank you for your purchase! Your order <strong>#${orderNumber}</strong> has been confirmed.</p>
-      
-      <p><strong>Product:</strong> ${productName}</p>
-      
-      <div class="license-box">
-        <p><strong>Your License Key${licenses.length > 1 ? 's' : ''}:</strong></p>
-        ${licenses.map((key, i) => `
-          <p class="license-key">${i + 1}. ${key}</p>
-        `).join('')}
-      </div>
-      
-      <p>Please save these license keys in a secure location. You'll need them to activate your product.</p>
-      
-      <p>If you have any questions or need assistance, please don't hesitate to contact us.</p>
-      
-      <p>Cheers!<br>${process.env.FROM_NAME || 'The Team'}</p>
-    </div>
-    <div class="footer">
-      <p>This email was sent because you placed an order with us.</p>
-    </div>
-  </div>
-</body>
-</html>
-    `;
+    // Prepare template variables
+    const variables = {
+      first_name: firstName || 'Customer',
+      last_name: lastName || '',
+      order_number: orderNumber,
+      product_name: productName,
+      license_keys: formatLicenseKeys(licenses, true), // HTML format
+      license_keys_text: formatLicenseKeys(licenses, false) // Text format
+    };
 
-    const textContent = `
-Hey ${firstName},
-
-Thank you for your purchase! Your order #${orderNumber} has been confirmed.
-
-Product: ${productName}
-
-Your License Key${licenses.length > 1 ? 's' : ''}:
-${licenseList}
-
-Please save these license keys in a secure location. You'll need them to activate your product.
-
-If you have any questions or need assistance, please don't hesitate to contact us.
-
-Cheers!
-${process.env.FROM_NAME || 'The Team'}
-    `;
+    // Render HTML and text content
+    const htmlContent = renderTemplate(template.email_html_template, variables);
+    const textContent = renderTemplate(template.email_text_template, {
+      ...variables,
+      license_keys: variables.license_keys_text // Use text format for plain email
+    });
+    const subject = renderTemplate(template.email_subject, variables);
 
     const msg = {
       to: email,
@@ -82,13 +44,13 @@ ${process.env.FROM_NAME || 'The Team'}
         email: process.env.FROM_EMAIL,
         name: process.env.FROM_NAME
       },
-      subject: `Your License Key${licenses.length > 1 ? 's' : ''} for ${productName}`,
+      subject: subject,
       text: textContent,
       html: htmlContent
     };
 
     await sgMail.send(msg);
-    console.log(`✅ Email sent to ${email}`);
+    console.log(`✅ Email sent to ${email} using template: ${template.template_name}`);
     
     return { success: true };
 

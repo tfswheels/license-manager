@@ -5,15 +5,16 @@ A SendOwl-like digital license distribution system for Shopify stores. Automatic
 ## 🎯 Project Overview
 
 **Goal:** Automate digital license delivery for Shopify products  
-**Status:** Day 2 Complete ✅  
-**Tech Stack:** Node.js, MySQL, React, Shopify API, SendGrid
+**Status:** Email Template System Complete ✅  
+**Tech Stack:** Node.js, MySQL, React, Shopify API, SendGrid  
+**Started:** October 13, 2025
 
 ---
 
 ## ✅ Completed Features
 
-### Day 1 - Backend Infrastructure ✅
-- ✅ MySQL database schema (7 tables)
+### Backend Infrastructure ✅
+- ✅ MySQL database schema (8 tables)
 - ✅ OAuth installation flow for Shopify Partner App
 - ✅ Webhook handler for order creation
 - ✅ Core license allocation engine
@@ -22,7 +23,7 @@ A SendOwl-like digital license distribution system for Shopify stores. Automatic
 - ✅ Admin API endpoints (full CRUD)
 - ✅ Successfully installed on test store
 
-### Day 2 - React Admin Dashboard ✅
+### React Admin Dashboard ✅
 - ✅ Complete admin UI with Tailwind CSS 4
 - ✅ Smart product selector with search (by name, SKU, ID, variant)
 - ✅ GraphQL-based product fetching (efficient, fetches ALL products)
@@ -33,6 +34,19 @@ A SendOwl-like digital license distribution system for Shopify stores. Automatic
 - ✅ Manual license allocation for failed orders
 - ✅ Real-time dashboard statistics
 - ✅ Responsive design for all screen sizes
+
+### Email Template System ✅
+- ✅ Template management interface (list, create, edit, delete)
+- ✅ Split-screen template editor with live preview
+- ✅ HTML and plain text versions
+- ✅ Auto-generate plain text from HTML
+- ✅ Template variable system ({{first_name}}, {{last_name}}, {{order_number}}, {{license_keys}}, {{product_name}})
+- ✅ Default template created on shop install
+- ✅ Set any template as default
+- ✅ Template validation (prevents script tags, warns about missing variables)
+- ✅ Backend fully supports custom templates
+- ✅ Email service uses templates with variable replacement
+- ✅ Cursor-position variable insertion
 
 ---
 
@@ -45,7 +59,7 @@ Webhook Handler
     ↓
 License Allocator
     ├→ Update Database
-    ├→ Send Email (SendGrid)
+    ├→ Send Email (Custom Template)
     └→ Check Inventory
 ```
 
@@ -57,6 +71,7 @@ License Allocator
 - **order_items** - Line items with license allocation tracking
 - **email_logs** - Email delivery audit trail
 - **inventory_alerts** - Low stock notifications
+- **email_templates** - Custom email templates per shop
 
 ---
 
@@ -117,20 +132,25 @@ cp .env.example .env
 node setup-database.js
 ```
 
-5. **Start the backend server**
+5. **Run email template migration**
+```bash
+node run-migration.js
+```
+
+6. **Start the backend server**
 ```bash
 npm run dev
 ```
 
 Server runs on `http://localhost:3001`
 
-6. **Install frontend dependencies**
+7. **Install frontend dependencies**
 ```bash
 cd ../admin
 npm install
 ```
 
-7. **Start the admin dashboard**
+8. **Start the admin dashboard**
 ```bash
 npm run dev
 ```
@@ -183,6 +203,23 @@ Admin dashboard runs on `http://localhost:5173`
 - Email delivery status
 - Manual allocation button for failed orders
 
+### Email Templates Page
+- Template list with search and filtering
+- Create/Edit/Delete templates
+- Set default template
+- View products assigned to each template
+- Template status indicators
+
+### Template Editor
+- Split-screen layout (editor + live preview)
+- HTML and Plain Text tabs
+- Auto-generate plain text from HTML
+- Live preview with sample data
+- Click-to-insert variable palette
+- Template validation with warnings
+- Cursor-position insertion (no scroll jumping)
+- Both HTML and text versions required for email compatibility
+
 ---
 
 ## 📡 API Endpoints
@@ -203,6 +240,8 @@ Admin dashboard runs on `http://localhost:5173`
 ### Admin API - Products
 - `GET /api/admin/products` - List products with license counts
 - `DELETE /api/admin/products/:productId` - Delete product from app
+- `PUT /api/admin/products/:productId/template` - Assign template to product
+- `POST /api/admin/products/bulk-assign-template` - Bulk assign template
 
 ### Admin API - Licenses
 - `POST /api/admin/licenses/parse-csv` - Parse CSV file
@@ -216,6 +255,16 @@ Admin dashboard runs on `http://localhost:5173`
 - `GET /api/admin/orders/:orderId` - Order details
 - `POST /api/admin/orders/:orderId/allocate` - Manually allocate licenses
 
+### Admin API - Templates
+- `GET /api/admin/templates` - List all templates
+- `GET /api/admin/templates/:id` - Get template
+- `POST /api/admin/templates` - Create template
+- `PUT /api/admin/templates/:id` - Update template
+- `DELETE /api/admin/templates/:id` - Delete template
+- `POST /api/admin/templates/:id/set-default` - Set as default
+- `POST /api/admin/templates/validate` - Validate template HTML
+- `GET /api/admin/templates/:id/products` - Get products using template
+
 ### Admin API - Stats
 - `GET /api/admin/stats` - Dashboard statistics
 
@@ -227,7 +276,7 @@ Admin dashboard runs on `http://localhost:5173`
 1. Customer places order on Shopify
 2. Shopify sends webhook to `/webhooks/orders/create`
 3. System allocates licenses from available pool
-4. Email sent to customer with license keys
+4. Email sent to customer with custom template (or default)
 5. Licenses marked as allocated in database
 6. Inventory levels checked for low stock alerts
 
@@ -235,7 +284,7 @@ Admin dashboard runs on `http://localhost:5173`
 1. Admin views orders with failed allocations
 2. Admin uploads more licenses via CSV
 3. Admin triggers manual allocation
-4. System allocates and sends emails
+4. System allocates and sends emails using templates
 
 ---
 
@@ -248,16 +297,21 @@ license-manager/
 │   ├── src/
 │   │   ├── config/          # Database & Shopify config
 │   │   ├── routes/          # API routes
-│   │   │   ├── auth.js      # OAuth flow
+│   │   │   ├── auth.js      # OAuth flow + default template creation
 │   │   │   ├── webhooks.js  # Order webhooks
-│   │   │   └── admin.js     # Admin API (GraphQL products)
+│   │   │   └── admin.js     # Admin API (products, orders, templates)
 │   │   ├── services/        # Business logic
 │   │   │   ├── orderService.js      # License allocation
-│   │   │   ├── emailService.js      # SendGrid emails
+│   │   │   ├── emailService.js      # SendGrid emails with templates
+│   │   │   ├── templateService.js   # Template rendering & management
 │   │   │   └── inventoryService.js  # Stock alerts
 │   │   └── index.js         # Main server
 │   ├── migrations/          # SQL schema
+│   │   ├── 001_initial_schema.sql
+│   │   └── 002_email_templates.sql
 │   ├── .env                 # Environment variables
+│   ├── setup-database.js    # Initial DB setup
+│   ├── run-migration.js     # Migration runner
 │   └── package.json
 └── admin/                   # React Admin Dashboard
     ├── src/
@@ -269,7 +323,9 @@ license-manager/
     │   │   ├── Products.jsx         # Product management + bulk actions
     │   │   ├── ProductLicenses.jsx  # CSV upload & license management
     │   │   ├── Orders.jsx           # Order history
-    │   │   └── OrderDetails.jsx     # Detailed order view
+    │   │   ├── OrderDetails.jsx     # Detailed order view
+    │   │   ├── Templates.jsx        # Template list (table view)
+    │   │   └── TemplateEditor.jsx   # Template editor with live preview
     │   ├── utils/
     │   │   └── api.js               # API client
     │   ├── App.jsx
@@ -284,6 +340,7 @@ license-manager/
 - **MySQL Workbench** - GUI for database management
 - **check-shops.js** - View installed shops
 - **setup-database.js** - Initialize database
+- **run-migration.js** - Run migrations
 
 ### Running Tests
 ```bash
@@ -296,15 +353,14 @@ node check-shops.js
 
 ---
 
-## 🎯 Roadmap
+## 🎯 Next Steps
 
-### Day 3 (Next) - Email Templates
-- [ ] Email template editor page (HTML + live preview)
-- [ ] Per-product custom email templates
-- [ ] Template variables: `{{first_name}}`, `{{last_name}}`, `{{order_number}}`, `{{license_keys}}`
-- [ ] Backend support for storing templates
-- [ ] Update email service to use custom templates
-- [ ] Send separate emails per product in order
+### Immediate (Next Session)
+- [ ] Add template assignment UI to Products page
+  - [ ] Template column in product list
+  - [ ] Dropdown to change template per product
+  - [ ] Bulk action: "Assign to Template"
+- [ ] End-to-end testing with real Shopify orders
 
 ### Future Enhancements
 - [ ] License expiration dates
@@ -312,8 +368,10 @@ node check-shops.js
 - [ ] Analytics dashboard
 - [ ] Bulk operations (export, import)
 - [ ] Multi-language support
-- [ ] Advanced email templates with drag-and-drop
 - [ ] Customer portal for license management
+- [ ] Template preview email (send test)
+- [ ] Template duplication
+- [ ] Rich text editor option
 
 ---
 
@@ -327,6 +385,9 @@ node check-shops.js
 - GraphQL fetches up to 20,000 products per shop
 - Product selector displays 25 products per page
 - Product list pagination: 25/50/100/250 per page options
+- **Email templates**: Both HTML and plain text versions sent (client chooses which to display)
+- Plain text auto-generates from HTML but can be manually overridden
+- Default template created automatically on shop install
 
 ---
 
@@ -337,12 +398,13 @@ node check-shops.js
 - CORS configured for admin panel only
 - All secrets in environment variables
 - No sensitive data in logs
+- Template validation prevents script injection
 
 ---
 
 ## 🐛 Known Issues
 
-None currently - Day 2 complete, all systems operational!
+None currently - Email template system operational! ✅
 
 ---
 
@@ -356,7 +418,7 @@ Private project - All rights reserved
 
 - **Developer**: Jeremiah (tfswheels)
 - **Started**: October 13, 2025
-- **Current Status**: Day 2 Complete ✅
+- **Current Status**: Email Template System Complete ✅
 
 ---
 
@@ -368,13 +430,27 @@ Private project - All rights reserved
 
 ---
 
-## 🎉 Day 2 Achievements
+## 🎉 Latest Updates (October 14, 2025)
 
-✅ Complete React admin dashboard  
-✅ Smart product selector with GraphQL  
-✅ Pagination everywhere (products, licenses, orders)  
-✅ Bulk selection and deletion  
-✅ CSV license upload  
-✅ Real-time stats  
-✅ Responsive design  
-✅ Professional UI/UX  
+✅ **Email Template System**
+- Complete template management UI
+- Template editor with split-screen preview
+- Auto-generate plain text from HTML
+- Variable replacement system
+- Default template on install
+- Template validation
+- All backend support complete
+
+**What's Working:**
+- Create, edit, delete templates
+- Set default template
+- Live preview while editing
+- Variable insertion at cursor position
+- Auto-generated plain text version
+- Template validation with warnings
+- Email service uses templates
+- Default template created on shop install
+
+**What's Next:**
+- Product → Template assignment UI
+- End-to-end testing with orders

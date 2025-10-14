@@ -4,6 +4,7 @@ import { Plus, Upload, Package, AlertTriangle, Trash2, CheckSquare, Square, Chev
 import { adminAPI } from '../utils/api';
 import ProductSelector from '../components/ProductSelector';
 
+
 function Products() {
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
@@ -12,6 +13,7 @@ function Products() {
   const [loading, setLoading] = useState(true);
   const [showSelector, setShowSelector] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+
   
   // Pagination & Bulk Selection
   const [currentPage, setCurrentPage] = useState(1);
@@ -45,6 +47,8 @@ function Products() {
       setLoading(false);
     }
   };
+
+
 
   const handleOpenSelector = () => {
     if (!selectedShop && shops.length > 1) {
