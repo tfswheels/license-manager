@@ -1,0 +1,148 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ShoppingCart, Eye, AlertCircle } from 'lucide-react';
+import { adminAPI } from '../utils/api';
+
+function Orders() {
+  const navigate = useNavigate();
+  const [orders, setOrders] = useState([]);
+  const [shops, setShops] = useState([]);
+  const [selectedShop, setSelectedShop] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadData();
+  }, [selectedShop]);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [ordersRes, shopsRes] = await Promise.all([
+        adminAPI.getOrders(selectedShop),
+        adminAPI.getShops(),
+      ]);
+      setOrders(ordersRes.data);
+      setShops(shopsRes.data);
+    } catch (error) {
+      console.error('Failed to load orders:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-500">Loading orders...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Orders</h1>
+          <p className="text-gray-500 mt-1">View order history and license allocations</p>
+        </div>
+
+        {shops.length > 1 && (
+          <select
+            value={selectedShop || ''}
+            onChange={(e) => setSelectedShop(e.target.value || null)}
+            className="input w-64"
+          >
+            <option value="">All Shops</option>
+            {shops.map((shop) => (
+              <option key={shop.id} value={shop.id}>
+                {shop.shop_domain}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      {/* Orders Table */}
+      <div className="card">
+        {orders.length === 0 ? (
+          <div className="text-center py-12">
+            <ShoppingCart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No orders yet</h3>
+            <p className="text-gray-500">Orders will appear here once customers make purchases</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-3 px-4 font-medium text-gray-700">Order</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-700">Customer</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-700">Shop</th>
+                  <th className="text-center py-3 px-4 font-medium text-gray-700">Items</th>
+                  <th className="text-center py-3 px-4 font-medium text-gray-700">Licenses</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-700">Date</th>
+                  <th className="text-right py-3 px-4 font-medium text-gray-700">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((order) => {
+                  const hasIssues = order.total_licenses_allocated < order.item_count;
+                  
+                  return (
+                    <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-4 px-4">
+                        <div>
+                          <p className="font-medium text-gray-900">#{order.order_number}</p>
+                          <p className="text-xs text-gray-500">ID: {order.shopify_order_id}</p>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div>
+                          <p className="text-sm text-gray-900">
+                            {order.customer_first_name} {order.customer_last_name}
+                          </p>
+                          <p className="text-xs text-gray-500">{order.customer_email}</p>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className="text-sm text-gray-600">{order.shop_domain}</span>
+                      </td>
+                      <td className="py-4 px-4 text-center">
+                        <span className="badge badge-info">{order.item_count || 0}</span>
+                      </td>
+                      <td className="py-4 px-4 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          {hasIssues && (
+                            <AlertCircle className="w-4 h-4 text-yellow-500" />
+                          )}
+                          <span className={`badge ${hasIssues ? 'badge-warning' : 'badge-success'}`}>
+                            {order.total_licenses_allocated || 0}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 text-sm text-gray-600">
+                        {new Date(order.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <button
+                          onClick={() => navigate(`/orders/${order.id}`)}
+                          className="btn-secondary text-sm"
+                        >
+                          <Eye className="w-4 h-4 inline mr-1" />
+                          View Details
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default Orders;
