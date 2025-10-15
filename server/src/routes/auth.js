@@ -34,14 +34,26 @@ router.get('/install', async (req, res) => {
 });
 
 router.get('/callback', async (req, res) => {
+  console.log('🔵 CALLBACK HIT - Query params:', req.query);
+  
   try {
+    console.log('🔵 Starting shopify.auth.callback...');
+    
     const callback = await shopify.auth.callback({
       rawRequest: req,
       rawResponse: res
     });
 
+    console.log('🔵 Callback completed, got session');
+
     const { session } = callback;
     const { shop, accessToken } = session;
+
+    console.log('🔵 Shop:', shop);
+    console.log('🔵 Token preview:', accessToken?.substring(0, 20) + '...');
+    console.log('🔵 Scopes:', session.scope);
+
+    console.log('🔵 Attempting database insert...');
 
     const [result] = await db.execute(
       `INSERT INTO shops (shop_domain, access_token, scopes) 
@@ -53,14 +65,18 @@ router.get('/callback', async (req, res) => {
       [shop, accessToken, session.scope]
     );
 
+    console.log('🔵 Database result:', result);
     console.log(`✅ Shop installed: ${shop}`);
 
+    console.log('🔵 Registering webhooks...');
     await registerWebhooks(shop, accessToken);
 
+    console.log('🔵 Redirecting to frontend...');
     res.redirect(`https://license-manager-lovat.vercel.app?shop=${shop}`);
 
   } catch (error) {
-    console.error('OAuth callback error:', error);
+    console.error('❌ OAuth callback error:', error);
+    console.error('❌ Error stack:', error.stack);
     res.status(500).send('Installation failed. Please try again.');
   }
 });
