@@ -212,11 +212,6 @@ function ProductSelector({ isOpen, onClose, onProductsAdded, shopId }) {
             <h2 className="text-2xl font-bold text-gray-900">Add Products</h2>
             <p className="text-sm text-gray-500 mt-1">
               Select products to add to your license management system
-              {loadingMore && (
-                <span className="ml-2 text-primary-600 animate-pulse">
-                  (Loading {totalProductsLoaded.toLocaleString()}+ products...)
-                </span>
-              )}
             </p>
           </div>
           <button
@@ -247,11 +242,6 @@ function ProductSelector({ isOpen, onClose, onProductsAdded, shopId }) {
               {availableCurrentProducts.length < currentProducts.length && (
                 <span className="ml-2 text-gray-400">
                   ({currentProducts.length - availableCurrentProducts.length} already added)
-                </span>
-              )}
-              {loadingMore && (
-                <span className="ml-2 text-primary-600">
-                  • {totalProductsLoaded.toLocaleString()} loaded so far
                 </span>
               )}
             </div>
@@ -354,7 +344,7 @@ function ProductSelector({ isOpen, onClose, onProductsAdded, shopId }) {
         {!loading && filteredProducts.length > ITEMS_PER_PAGE && (
           <div className="flex items-center justify-between p-6 border-t border-gray-200">
             <div className="text-sm text-gray-600">
-              Showing {startIndex + 1}-{Math.min(endIndex, filteredProducts.length)} of {filteredProducts.length.toLocaleString()} products
+              Showing {startIndex + 1}-{Math.min(endIndex, filteredProducts.length)} of {filteredProducts.toLocaleString()} products
             </div>
             <div className="flex items-center gap-2">
               <button
