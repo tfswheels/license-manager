@@ -1,6 +1,6 @@
 // admin/src/pages/Dashboard.jsx
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';  // Add this import
+import { Link } from 'react-router-dom';
 import { Package, ShoppingCart, Key, AlertCircle, Mail } from 'lucide-react';
 import { adminAPI } from '../utils/api';
 
@@ -20,25 +20,45 @@ function Dashboard() {
       setLoading(true);
       setError(null);
       
+      console.log('Fetching shops...');
       const shopsRes = await adminAPI.getShops();
+      console.log('Shops response:', shopsRes);
       
-      if (shopsRes?.data?.shops) {
-        setShops(shopsRes.data.shops);
+      // Handle different response structures
+      const shopsData = shopsRes?.data?.shops || shopsRes?.data || [];
+      console.log('Shops data:', shopsData);
+      
+      if (Array.isArray(shopsData) && shopsData.length > 0) {
+        setShops(shopsData);
 
-        if (shopsRes.data.shops.length > 0) {
-          const targetShopId = selectedShop || shopsRes.data.shops[0].id;
+        const targetShopId = selectedShop || shopsData[0].id;
+        console.log('Fetching stats for shop:', targetShopId);
+        
+        try {
           const statsRes = await adminAPI.getShopStats(targetShopId);
+          console.log('Stats response:', statsRes);
           
           if (statsRes?.data) {
             setStats(statsRes.data);
           }
+        } catch (statsError) {
+          console.error('Stats fetch failed:', statsError);
+          // Continue even if stats fail
+          setStats({
+            totalOrders: 0,
+            totalProducts: 0,
+            totalLicenses: 0,
+            availableLicenses: 0
+          });
         }
       } else {
+        console.log('No shops found or invalid data structure');
         setShops([]);
       }
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
-      setError('Failed to load dashboard. Please refresh the page.');
+      console.error('Error details:', error.response || error.message);
+      setError(`Failed to load dashboard: ${error.message}`);
       setShops([]);
     } finally {
       setLoading(false);
@@ -72,7 +92,10 @@ function Dashboard() {
       <div className="text-center py-12">
         <Key className="w-16 h-16 text-gray-400 mx-auto mb-4" />
         <h2 className="text-xl font-medium text-gray-900 mb-2">No shops installed</h2>
-        <p className="text-gray-500">Install the app on a Shopify store to get started</p>
+        <p className="text-gray-500 mb-4">Install the app on a Shopify store to get started</p>
+        <button onClick={loadData} className="btn-secondary">
+          Refresh
+        </button>
       </div>
     );
   }
