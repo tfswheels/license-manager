@@ -1,12 +1,13 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:3001',
+  baseURL: import.meta.env.PROD 
+    ? 'https://license-manager-production-96dd.up.railway.app'
+    : 'http://localhost:3001',
   headers: {
     'Content-Type': 'application/json',
   },
 });
-
 // Interceptor for error handling
 api.interceptors.response.use(
   (response) => response,
