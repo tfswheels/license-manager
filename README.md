@@ -80,6 +80,7 @@ A complete digital license distribution system for Shopify stores. Automatically
 - CORS restricted to admin panel origin
 - Template validation (prevents XSS)
 - Railway IP whitelist on Cloud SQL database
+- Private network database connection (Railway internal)
 
 ---
 
@@ -135,22 +136,22 @@ https://license-manager-production-96dd.up.railway.app
 ```
 
 **Database:**
-- Google Cloud SQL (MySQL)
-- IP Whitelisted: Railway CIDR ranges
+- Railway MySQL (private network)
+- Connected via mysql.railway.internal
+- No public access required
 
 ### Environment Variables
 
 **Backend (Railway):**
-```bash
 PORT=8080
 NODE_ENV=production
 APP_URL=https://license-manager-production-96dd.up.railway.app
 
-# Database
-DB_HOST=34.67.162.140
-DB_USER=tfs
+# Database (Railway MySQL - Private Network)
+DB_HOST=mysql.railway.internal
+DB_USER=root
 DB_PASSWORD=[SECURE]
-DB_NAME=license_manager
+DB_NAME=railway
 DB_PORT=3306
 
 # Shopify
@@ -168,7 +169,6 @@ FROM_NAME=TFS License Manager
 # Alerts
 ADMIN_EMAIL=jeremiah@tfswheels.com
 LOW_INVENTORY_THRESHOLD=10
-```
 
 **Frontend (Vercel):**
 - Automatically uses production API URL via `import.meta.env.PROD` check
@@ -181,6 +181,12 @@ LOW_INVENTORY_THRESHOLD=10
 3. Auto-deploys on push to `main`
 4. Build: `npm install`
 5. Start: `npm start`
+
+**Database (Railway MySQL):**
+1. Managed MySQL instance
+2. Private network connection
+3. Automatic backups
+4. Connected to backend via internal network
 
 **Frontend (Vercel):**
 1. Connected to GitHub repo
@@ -586,6 +592,8 @@ Private project - All rights reserved
 
 - **October 13, 2025** - Project started, backend complete
 - **October 14, 2025** - Frontend complete, production deployment
+- **October 15, 2025** - Database migrated to Railway (private network)
+
 - **Status:** Live and operational! 🚀
 
 ---
