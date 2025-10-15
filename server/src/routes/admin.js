@@ -30,10 +30,11 @@ router.get('/shops', async (req, res) => {
   }
 });
 
-// Fetch ALL products from Shopify using GraphQL (fetches everything)
+// Fetch products from Shopify using GraphQL with cursor-based pagination
 router.get('/shops/:shopId/shopify-products', async (req, res) => {
   try {
     const { shopId } = req.params;
+    const { cursor } = req.query; // Optional cursor for pagination
 
     // Get shop details
     const [shops] = await db.execute(
@@ -47,7 +48,7 @@ router.get('/shops/:shopId/shopify-products', async (req, res) => {
 
     const { shop_domain, access_token } = shops[0];
 
-    // GraphQL query for fetching products with pagination
+    // GraphQL query for fetching ONE PAGE of products
     const query = `
       query getProducts($first: Int!, $after: String) {
         products(first: $first, after: $after) {
@@ -85,76 +86,59 @@ router.get('/shops/:shopId/shopify-products', async (req, res) => {
       }
     `;
 
-    let allProducts = [];
-    let hasNextPage = true;
-    let afterCursor = null;
-    let pageCount = 0;
+    const variables = {
+      first: 250, // Fetch 250 products per request
+      after: cursor || null
+    };
 
-    // Fetch ALL pages
-    while (hasNextPage) {
-      pageCount++;
-      
-      const variables = {
-        first: 250, // Maximum per page
-        after: afterCursor
-      };
+    const response = await fetch(`https://${shop_domain}/admin/api/2024-01/graphql.json`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': access_token
+      },
+      body: JSON.stringify({ query, variables })
+    });
 
-      const response = await fetch(`https://${shop_domain}/admin/api/2024-01/graphql.json`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Shopify-Access-Token': access_token
-        },
-        body: JSON.stringify({ query, variables })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Shopify API error: ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      if (result.errors) {
-        throw new Error('GraphQL query failed');
-      }
-
-      const productsData = result.data.products;
-      const edges = productsData.edges;
-
-      // Transform and add products
-      for (const edge of edges) {
-        const node = edge.node;
-        allProducts.push({
-          id: node.legacyResourceId,
-          title: node.title,
-          handle: node.handle,
-          status: node.status,
-          vendor: node.vendor,
-          image: node.images.edges[0]?.node?.url || null,
-          variants: node.variants.edges.map(v => ({
-            id: v.node.legacyResourceId,
-            sku: v.node.sku
-          }))
-        });
-      }
-
-      hasNextPage = productsData.pageInfo.hasNextPage;
-      afterCursor = productsData.pageInfo.endCursor;
-
-      console.log(`[Product Fetch] Page ${pageCount}, fetched ${edges.length} products, total: ${allProducts.length}`);
-
-      // Safety limit
-      if (allProducts.length > 20000) {
-        console.warn('Product limit reached (20,000)');
-        break;
-      }
+    if (!response.ok) {
+      throw new Error(`Shopify API error: ${response.status}`);
     }
 
-    console.log(`[Product Fetch] Complete! Fetched ${allProducts.length} total products`);
+    const result = await response.json();
 
+    if (result.errors) {
+      console.error('GraphQL errors:', result.errors);
+      throw new Error('GraphQL query failed');
+    }
+
+    const productsData = result.data.products;
+    const edges = productsData.edges;
+
+    // Transform products
+    const products = edges.map(edge => {
+      const node = edge.node;
+      return {
+        id: node.legacyResourceId,
+        title: node.title,
+        handle: node.handle,
+        status: node.status,
+        vendor: node.vendor,
+        image: node.images.edges[0]?.node?.url || null,
+        variants: node.variants.edges.map(v => ({
+          id: v.node.legacyResourceId,
+          sku: v.node.sku
+        }))
+      };
+    });
+
+    console.log(`[Product Fetch] Returned ${products.length} products (cursor: ${cursor || 'initial'})`);
+
+    // Return one page with pagination info
     res.json({ 
-      products: allProducts,
-      total: allProducts.length
+      products,
+      hasMore: productsData.pageInfo.hasNextPage,
+      nextCursor: productsData.pageInfo.endCursor,
+      count: products.length
     });
 
   } catch (error) {
@@ -166,6 +150,74 @@ router.get('/shops/:shopId/shopify-products', async (req, res) => {
   }
 });
 
+
+// DIAGNOSTIC: Check shop authentication
+router.get('/shops/:shopId/diagnose', async (req, res) => {
+  try {
+    const { shopId } = req.params;
+
+    // Get shop from database
+    const [shops] = await db.execute(
+      'SELECT id, shop_domain, access_token, installed_at FROM shops WHERE id = ?',
+      [shopId]
+    );
+
+    if (shops.length === 0) {
+      return res.json({
+        status: 'error',
+        message: 'Shop not found in database',
+        shopId
+      });
+    }
+
+    const shop = shops[0];
+
+    // Test Shopify API connection
+    const testQuery = `
+      query {
+        shop {
+          name
+          email
+        }
+      }
+    `;
+
+    const response = await fetch(`https://${shop.shop_domain}/admin/api/2024-01/graphql.json`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': shop.access_token
+      },
+      body: JSON.stringify({ query: testQuery })
+    });
+
+    const responseData = await response.json();
+
+    res.json({
+      status: response.ok ? 'success' : 'error',
+      httpStatus: response.status,
+      shop: {
+        id: shop.id,
+        domain: shop.shop_domain,
+        tokenPreview: shop.access_token?.substring(0, 20) + '...',
+        installedAt: shop.installed_at
+      },
+      shopifyApiResponse: responseData,
+      envCheck: {
+        hasApiKey: !!process.env.SHOPIFY_API_KEY,
+        hasApiSecret: !!process.env.SHOPIFY_API_SECRET,
+        appUrl: process.env.APP_URL
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: error.message,
+      stack: error.stack
+    });
+  }
+});
 
 // Add selected products to database
 router.post('/shops/:shopId/add-products', async (req, res) => {

@@ -23,7 +23,10 @@ export const adminAPI = {
   getShops: () => api.get('/api/admin/shops'),
   
   // Product Selection
-  fetchShopifyProducts: (shopId) => api.get(`/api/admin/shops/${shopId}/shopify-products`),
+  fetchShopifyProducts: (shopId, cursor = null) => {
+    const params = cursor ? { cursor } : {};
+    return api.get(`/api/admin/shops/${shopId}/shopify-products`, { params });
+  },  
   addSelectedProducts: (shopId, productIds) => 
     api.post(`/api/admin/shops/${shopId}/add-products`, { productIds }),
   

@@ -14,10 +14,11 @@ function ProductSelector({ isOpen, onClose, onProductsAdded, shopId }) {
   const [adding, setAdding] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [totalProductsLoaded, setTotalProductsLoaded] = useState(0);
 
   useEffect(() => {
     if (isOpen && shopId) {
-      loadAllProducts();
+      loadProducts();
       loadExistingProducts();
     }
   }, [isOpen, shopId]);
@@ -37,20 +38,28 @@ function ProductSelector({ isOpen, onClose, onProductsAdded, shopId }) {
     }
   };
 
-  const loadAllProducts = async () => {
+  const loadProducts = async () => {
     try {
       setLoading(true);
+      setShopifyProducts([]);
+      setFilteredProducts([]);
+      setTotalProductsLoaded(0);
       
+      // Load first page immediately
       const firstResponse = await adminAPI.fetchShopifyProducts(shopId);
       const firstBatch = firstResponse.data.products;
       
       setShopifyProducts(firstBatch);
       setFilteredProducts(firstBatch);
+      setTotalProductsLoaded(firstBatch.length);
       setLoading(false);
 
+      console.log(`[ProductSelector] Loaded ${firstBatch.length} products initially`);
+
+      // Load remaining pages in background
       if (firstResponse.data.hasMore) {
         setLoadingMore(true);
-        await fetchRemainingProducts(firstBatch);
+        await loadRemainingPages(firstResponse.data.nextCursor, firstBatch);
         setLoadingMore(false);
       }
 
@@ -61,38 +70,45 @@ function ProductSelector({ isOpen, onClose, onProductsAdded, shopId }) {
     }
   };
 
-  const fetchRemainingProducts = async (initialProducts) => {
+  const loadRemainingPages = async (initialCursor, initialProducts) => {
     let allProducts = [...initialProducts];
-    let hasMore = true;
+    let cursor = initialCursor;
     let pageCount = 1;
 
-    while (hasMore && allProducts.length < 10000) {
+    while (cursor && allProducts.length < 20000) {
       try {
         pageCount++;
-        const response = await adminAPI.fetchShopifyProducts(shopId);
+        const response = await adminAPI.fetchShopifyProducts(shopId, cursor);
         
         if (response.data.products.length === 0) {
-          hasMore = false;
           break;
         }
 
-        allProducts = [...allProducts, ...response.data.products];
+        const newProducts = response.data.products;
+        allProducts = [...allProducts, ...newProducts];
         
+        // Update state progressively
         setShopifyProducts([...allProducts]);
-        setFilteredProducts(prev => {
-          if (searchQuery.trim()) {
-            return filterProductList(allProducts, searchQuery);
-          }
-          return [...allProducts];
-        });
+        setTotalProductsLoaded(allProducts.length);
+        
+        // Update filtered products if no search query
+        if (!searchQuery.trim()) {
+          setFilteredProducts([...allProducts]);
+        } else {
+          setFilteredProducts(filterProductList(allProducts, searchQuery));
+        }
 
-        hasMore = response.data.hasMore;
+        console.log(`[ProductSelector] Page ${pageCount}: +${newProducts.length} products (total: ${allProducts.length})`);
+
+        cursor = response.data.hasMore ? response.data.nextCursor : null;
 
       } catch (error) {
         console.error('Error fetching more products:', error);
-        hasMore = false;
+        break;
       }
     }
+
+    console.log(`[ProductSelector] Finished loading ${allProducts.length} total products`);
   };
 
   const filterProductList = (products, query) => {
@@ -131,7 +147,6 @@ function ProductSelector({ isOpen, onClose, onProductsAdded, shopId }) {
     setSelectedProducts(newSelected);
   };
 
-  // FIX: Select only products on CURRENT PAGE that are not already added
   const selectAll = () => {
     const newSelected = new Set(selectedProducts);
     currentProducts.forEach(product => {
@@ -142,7 +157,6 @@ function ProductSelector({ isOpen, onClose, onProductsAdded, shopId }) {
     setSelectedProducts(newSelected);
   };
 
-  // FIX: Deselect only products on CURRENT PAGE
   const deselectAll = () => {
     const newSelected = new Set(selectedProducts);
     currentProducts.forEach(product => {
@@ -183,7 +197,6 @@ function ProductSelector({ isOpen, onClose, onProductsAdded, shopId }) {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
   };
 
-  // Check if all current page products are selected (excluding already added)
   const availableCurrentProducts = currentProducts.filter(p => !isProductAlreadyAdded(p.id));
   const allCurrentPageSelected = availableCurrentProducts.length > 0 && 
     availableCurrentProducts.every(p => selectedProducts.has(p.id));
@@ -199,7 +212,11 @@ function ProductSelector({ isOpen, onClose, onProductsAdded, shopId }) {
             <h2 className="text-2xl font-bold text-gray-900">Add Products</h2>
             <p className="text-sm text-gray-500 mt-1">
               Select products to add to your license management system
-              {loadingMore && <span className="ml-2 text-primary-600">(Loading more products...)</span>}
+              {loadingMore && (
+                <span className="ml-2 text-primary-600 animate-pulse">
+                  (Loading {totalProductsLoaded.toLocaleString()}+ products...)
+                </span>
+              )}
             </p>
           </div>
           <button
@@ -232,6 +249,11 @@ function ProductSelector({ isOpen, onClose, onProductsAdded, shopId }) {
                   ({currentProducts.length - availableCurrentProducts.length} already added)
                 </span>
               )}
+              {loadingMore && (
+                <span className="ml-2 text-primary-600">
+                  • {totalProductsLoaded.toLocaleString()} loaded so far
+                </span>
+              )}
             </div>
             <div className="flex gap-2">
               <button
@@ -255,79 +277,71 @@ function ProductSelector({ isOpen, onClose, onProductsAdded, shopId }) {
         <div className="flex-1 overflow-y-auto p-6">
           {loading ? (
             <div className="flex items-center justify-center h-64">
-              <div className="text-gray-500">Loading products from Shopify...</div>
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                <div className="text-gray-500">Loading products from Shopify...</div>
+              </div>
             </div>
           ) : currentProducts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64">
-              <Package className="w-16 h-16 text-gray-300 mb-4" />
+            <div className="text-center py-12">
+              <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-500">
                 {searchQuery ? 'No products match your search' : 'No products found'}
               </p>
             </div>
           ) : (
             <div className="space-y-2">
-              {currentProducts.map((product) => {
+              {currentProducts.map(product => {
                 const isSelected = selectedProducts.has(product.id);
-                const alreadyAdded = isProductAlreadyAdded(product.id);
+                const isAdded = isProductAlreadyAdded(product.id);
                 
                 return (
                   <div
                     key={product.id}
-                    onClick={() => toggleProduct(product.id)}
+                    onClick={() => !isAdded && toggleProduct(product.id)}
                     className={`
-                      flex items-start gap-4 p-4 rounded-lg border-2 transition-all
-                      ${alreadyAdded 
-                        ? 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed' 
+                      flex items-center gap-4 p-4 border rounded-lg transition-colors
+                      ${isAdded 
+                        ? 'bg-gray-50 border-gray-200 opacity-60 cursor-not-allowed' 
                         : isSelected 
-                          ? 'border-primary-500 bg-primary-50 cursor-pointer' 
-                          : 'border-gray-200 hover:border-gray-300 cursor-pointer'
+                          ? 'bg-primary-50 border-primary-300 cursor-pointer hover:bg-primary-100' 
+                          : 'border-gray-200 cursor-pointer hover:bg-gray-50'
                       }
                     `}
                   >
-                    {/* Checkbox or Already Added Icon */}
-                    <div className="mt-1">
-                      {alreadyAdded ? (
-                        <CheckCircle className="w-5 h-5 text-green-500" />
+                    <div className="flex-shrink-0">
+                      {isAdded ? (
+                        <CheckCircle className="w-5 h-5 text-gray-400" />
                       ) : isSelected ? (
                         <CheckSquare className="w-5 h-5 text-primary-600" />
                       ) : (
                         <Square className="w-5 h-5 text-gray-400" />
                       )}
                     </div>
-
-                    {/* Product Image */}
-                    <div className="w-16 h-16 bg-gray-100 rounded-lg flex-shrink-0 overflow-hidden">
-                      {product.image ? (
-                        <img 
-                          src={product.image} 
-                          alt={product.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Package className="w-8 h-8 text-gray-400" />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Product Details */}
+                    
+                    {product.image && (
+                      <img 
+                        src={product.image} 
+                        alt={product.title}
+                        className="w-12 h-12 object-cover rounded"
+                      />
+                    )}
+                    
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-medium text-gray-900">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-medium text-gray-900 truncate">
                           {product.title}
-                          {alreadyAdded && (
-                            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                              Already Added
-                            </span>
-                          )}
                         </h3>
+                        {isAdded && (
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
+                            Already Added
+                          </span>
+                        )}
                       </div>
-                      <p className="text-sm text-gray-500 mt-1">
-                        Shopify ID: {product.id}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        Variants: {product.variants.length} • SKU: {product.variants[0]?.sku || 'N/A'}
-                      </p>
+                      <p className="text-sm text-gray-500">ID: {product.id}</p>
+                      {product.variants.length > 0 && product.variants[0].sku && (
+                        <p className="text-sm text-gray-400">SKU: {product.variants[0].sku}</p>
+                      )}
                     </div>
                   </div>
                 );
@@ -337,47 +351,59 @@ function ProductSelector({ isOpen, onClose, onProductsAdded, shopId }) {
         </div>
 
         {/* Pagination */}
-        {!loading && totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-gray-200">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-600">
-                Page {currentPage} of {totalPages} 
-                <span className="ml-2 text-gray-400">
-                  ({filteredProducts.length} total products)
-                </span>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => goToPage(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => goToPage(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
+        {!loading && filteredProducts.length > ITEMS_PER_PAGE && (
+          <div className="flex items-center justify-between p-6 border-t border-gray-200">
+            <div className="text-sm text-gray-600">
+              Showing {startIndex + 1}-{Math.min(endIndex, filteredProducts.length)} of {filteredProducts.toLocaleString()} products
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => goToPage(1)}
+                disabled={currentPage === 1}
+                className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                First
+              </button>
+              <button
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="px-4 py-2 text-sm text-gray-700">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => goToPage(totalPages)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Last
+              </button>
             </div>
           </div>
         )}
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-6 border-t border-gray-200">
+        <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50">
           <button
             onClick={onClose}
-            className="btn-secondary"
+            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100"
           >
             Cancel
           </button>
           <button
             onClick={handleAddProducts}
             disabled={selectedProducts.size === 0 || adding}
-            className="btn-primary"
+            className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {adding ? 'Adding...' : `Add ${selectedProducts.size} Product${selectedProducts.size !== 1 ? 's' : ''}`}
           </button>

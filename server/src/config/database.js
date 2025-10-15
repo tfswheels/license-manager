@@ -16,14 +16,31 @@ const pool = mysql.createPool({
   keepAliveInitialDelay: 0
 });
 
-pool.getConnection()
-  .then(connection => {
-    console.log('✅ Database connected successfully');
-    connection.release();
-  })
-  .catch(err => {
-    console.error('❌ Database connection failed:', err.message);
-    process.exit(1);
-  });
+// Graceful connection with retries - don't crash the server!
+async function testConnection(retries = 5, delay = 5000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const connection = await pool.getConnection();
+      console.log('✅ Database connected successfully');
+      connection.release();
+      return true;
+    } catch (err) {
+      console.error(`❌ Database connection attempt ${i + 1}/${retries} failed:`, err.message);
+      
+      if (i < retries - 1) {
+        console.log(`⏳ Retrying in ${delay/1000} seconds...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+        console.error('❌ All database connection attempts failed');
+        console.error('⚠️  Server will continue, but database operations will fail');
+        console.error('⚠️  Check Railway database status and environment variables');
+      }
+    }
+  }
+  return false;
+}
+
+// Start connection test but don't block server startup
+testConnection();
 
 export default pool;
