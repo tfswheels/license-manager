@@ -12,9 +12,10 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors({
-  origin: process.env.NODE_ENV === 'development' 
-    ? 'http://localhost:5173' 
-    : process.env.ADMIN_URL,
+  origin: [
+    'http://localhost:5173',  // Local development
+    'https://license-manager-lovat.vercel.app'  // Production frontend
+  ],
   credentials: true
 }));
 
