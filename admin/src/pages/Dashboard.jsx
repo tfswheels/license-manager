@@ -50,31 +50,36 @@ function Dashboard() {
     );
   }
 
+  const isLowStock = (stats?.availableLicenses || 0) < (stats?.totalLicenses || 0) * 0.2;
+
   const statCards = [
     {
       name: 'Total Orders',
       value: stats?.totalOrders || 0,
       icon: ShoppingCart,
-      color: 'blue',
+      bgColor: 'bg-blue-100',
+      iconColor: 'text-blue-600',
     },
     {
       name: 'Total Products',
       value: stats?.totalProducts || 0,
       icon: Package,
-      color: 'green',
+      bgColor: 'bg-green-100',
+      iconColor: 'text-green-600',
     },
     {
       name: 'Total Licenses',
       value: stats?.totalLicenses || 0,
       icon: Key,
-      color: 'purple',
+      bgColor: 'bg-purple-100',
+      iconColor: 'text-purple-600',
     },
     {
       name: 'Available Licenses',
       value: stats?.availableLicenses || 0,
       icon: AlertCircle,
-      color: (stats?.availableLicenses || 0) < (stats?.totalLicenses || 0) * 0.2 
-        ? 'red' : 'green',
+      bgColor: isLowStock ? 'bg-red-100' : 'bg-green-100',
+      iconColor: isLowStock ? 'text-red-600' : 'text-green-600',
     },
   ];
 
@@ -114,8 +119,8 @@ function Dashboard() {
                   <p className="text-sm font-medium text-gray-600">{stat.name}</p>
                   <p className="text-3xl font-bold text-gray-900 mt-2">{stat.value}</p>
                 </div>
-                <div className={`p-3 rounded-lg bg-${stat.color}-100`}>
-                  <Icon className={`w-6 h-6 text-${stat.color}-600`} />
+                <div className={`p-3 rounded-lg ${stat.bgColor}`}>
+                  <Icon className={`w-6 h-6 ${stat.iconColor}`} />
                 </div>
               </div>
             </div>
@@ -152,28 +157,28 @@ function Dashboard() {
       <div className="card">
         <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <a
+          
             href="/products"
             className="p-6 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 hover:scale-105 transition-all duration-200"
-          >
+          <a>
             <Package className="w-8 h-8 text-blue-600 mb-2" />
             <h3 className="font-medium text-gray-900">Manage Products</h3>
             <p className="text-sm text-gray-500 mt-1">Sync and link products to licenses</p>
           </a>
           
-          <a
+          
             href="/orders"
             className="p-6 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 hover:scale-105 transition-all duration-200"
-          >
+          <a>
             <ShoppingCart className="w-8 h-8 text-blue-600 mb-2" />
             <h3 className="font-medium text-gray-900">View Orders</h3>
             <p className="text-sm text-gray-500 mt-1">Check order history and allocations</p>
           </a>
           
-          <a
+          
             href="/templates"
             className="p-6 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 hover:scale-105 transition-all duration-200"
-          >
+          <a>
             <Mail className="w-8 h-8 text-blue-600 mb-2" />
             <h3 className="font-medium text-gray-900">Manage Templates</h3>
             <p className="text-sm text-gray-500 mt-1">Create and edit email templates</p>
