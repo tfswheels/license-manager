@@ -1,10 +1,11 @@
+// admin/src/pages/Dashboard.jsx
 import { useState, useEffect } from 'react';
 import { Package, ShoppingCart, Key, AlertCircle, Mail } from 'lucide-react';
 import { adminAPI } from '../utils/api';
 
 function Dashboard() {
-  const [stats, setStats] = useState(null);
   const [shops, setShops] = useState([]);
+  const [stats, setStats] = useState(null);
   const [selectedShop, setSelectedShop] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -15,12 +16,15 @@ function Dashboard() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [statsRes, shopsRes] = await Promise.all([
-        adminAPI.getStats(selectedShop),
-        adminAPI.getShops(),
-      ]);
-      setStats(statsRes.data);
-      setShops(shopsRes.data);
+      
+      const shopsRes = await adminAPI.getShops();
+      setShops(shopsRes.data.shops);
+
+      if (shopsRes.data.shops.length > 0) {
+        const targetShopId = selectedShop || shopsRes.data.shops[0].id;
+        const statsRes = await adminAPI.getShopStats(targetShopId);
+        setStats(statsRes.data);
+      }
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
     } finally {
@@ -32,6 +36,16 @@ function Dashboard() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-gray-500">Loading dashboard...</div>
+      </div>
+    );
+  }
+
+  if (shops.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <Key className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+        <h2 className="text-xl font-medium text-gray-900 mb-2">No shops installed</h2>
+        <p className="text-gray-500">Install the app on a Shopify store to get started</p>
       </div>
     );
   }
@@ -59,7 +73,8 @@ function Dashboard() {
       name: 'Available Licenses',
       value: stats?.availableLicenses || 0,
       icon: AlertCircle,
-      color: stats?.availableLicenses < 50 ? 'red' : 'green',
+      color: (stats?.availableLicenses || 0) < (stats?.totalLicenses || 0) * 0.2 
+        ? 'red' : 'green',
     },
   ];
 
@@ -139,7 +154,7 @@ function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <a
             href="/products"
-            className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 transition-colors"
+            className="p-6 border-2 border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 hover:scale-105 transition-all duration-200"
           >
             <Package className="w-8 h-8 text-primary-600 mb-2" />
             <h3 className="font-medium text-gray-900">Manage Products</h3>
@@ -148,18 +163,21 @@ function Dashboard() {
           
           <a
             href="/orders"
-            className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 transition-colors"
+            className="p-6 border-2 border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 hover:scale-105 transition-all duration-200"
           >
             <ShoppingCart className="w-8 h-8 text-primary-600 mb-2" />
             <h3 className="font-medium text-gray-900">View Orders</h3>
             <p className="text-sm text-gray-500 mt-1">Check order history and allocations</p>
           </a>
           
-          <div className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 transition-colors cursor-pointer">
-            <Key className="w-8 h-8 text-primary-600 mb-2" />
-            <h3 className="font-medium text-gray-900">Upload Licenses</h3>
-            <p className="text-sm text-gray-500 mt-1">Add new license keys to inventory</p>
-          </div>
+          <a
+            href="/templates"
+            className="p-6 border-2 border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 hover:scale-105 transition-all duration-200"
+          >
+            <Mail className="w-8 h-8 text-primary-600 mb-2" />
+            <h3 className="font-medium text-gray-900">Manage Templates</h3>
+            <p className="text-sm text-gray-500 mt-1">Create and edit email templates</p>
+          </a>
         </div>
       </div>
     </div>
