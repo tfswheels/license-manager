@@ -344,7 +344,8 @@ function ProductSelector({ isOpen, onClose, onProductsAdded, shopId }) {
         {!loading && filteredProducts.length > ITEMS_PER_PAGE && (
           <div className="flex items-center justify-between p-6 border-t border-gray-200">
             <div className="text-sm text-gray-600">
-              Showing {startIndex + 1}-{Math.min(endIndex, filteredProducts.length)} of {filteredProducts.toLocaleString()} products
+              Showing {startIndex + 1}-{Math.min(endIndex, filteredProducts.length)}
+              {!loadingMore && ` of ${filteredProducts.length.toLocaleString()} products`}
             </div>
             <div className="flex items-center gap-2">
               <button
