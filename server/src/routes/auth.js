@@ -57,7 +57,7 @@ router.get('/callback', async (req, res) => {
 
     await registerWebhooks(shop, accessToken);
 
-    res.redirect(`http://localhost:5173?shop=${shop}&installed=true`);
+    res.redirect(`https://license-manager-lovat.vercel.app?shop=${shop}`);
 
   } catch (error) {
     console.error('OAuth callback error:', error);
