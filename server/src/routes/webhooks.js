@@ -9,7 +9,8 @@ const router = express.Router();
 function verifyWebhook(req, res, next) {
   const hmac = req.get('X-Shopify-Hmac-SHA256');
   const body = req.body;
-  const secret = process.env.SHOPIFY_WEBHOOK_SECRET;
+  const secret = process.env.SHOPIFY_API_SECRET;
+
 
   const hash = crypto
     .createHmac('sha256', secret)

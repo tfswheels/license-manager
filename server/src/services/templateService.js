@@ -222,7 +222,14 @@ export async function getShopTemplates(shopId) {
   try {
     const [templates] = await db.execute(
       `SELECT t.*, 
-        (SELECT COUNT(*) FROM products WHERE email_template_id = t.id) as product_count
+        (SELECT COUNT(*) FROM products p 
+         WHERE p.shop_id = t.shop_id 
+         AND (
+           (t.is_default = 1 AND (p.email_template_id IS NULL OR p.email_template_id = t.id))
+           OR
+           (t.is_default = 0 AND p.email_template_id = t.id)
+         )
+        ) as product_count
        FROM email_templates t 
        WHERE t.shop_id = ?
        ORDER BY t.is_default DESC, t.template_name ASC`,

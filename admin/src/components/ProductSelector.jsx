@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Search, Package, CheckSquare, Square, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Search, Package, CheckSquare, Square, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
 import { adminAPI } from '../utils/api';
 
 const ITEMS_PER_PAGE = 25;
@@ -8,6 +8,7 @@ function ProductSelector({ isOpen, onClose, onProductsAdded, shopId }) {
   const [loading, setLoading] = useState(false);
   const [shopifyProducts, setShopifyProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
+  const [existingProductIds, setExistingProductIds] = useState(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProducts, setSelectedProducts] = useState(new Set());
   const [adding, setAdding] = useState(false);
@@ -17,19 +18,29 @@ function ProductSelector({ isOpen, onClose, onProductsAdded, shopId }) {
   useEffect(() => {
     if (isOpen && shopId) {
       loadAllProducts();
+      loadExistingProducts();
     }
   }, [isOpen, shopId]);
 
   useEffect(() => {
     filterProducts();
-    setCurrentPage(1); // Reset to first page on search
+    setCurrentPage(1);
   }, [searchQuery, shopifyProducts]);
+
+  const loadExistingProducts = async () => {
+    try {
+      const response = await adminAPI.getProducts(shopId);
+      const existingIds = new Set(response.data.map(p => p.shopify_product_id));
+      setExistingProductIds(existingIds);
+    } catch (error) {
+      console.error('Failed to load existing products:', error);
+    }
+  };
 
   const loadAllProducts = async () => {
     try {
       setLoading(true);
       
-      // Fetch first batch immediately
       const firstResponse = await adminAPI.fetchShopifyProducts(shopId);
       const firstBatch = firstResponse.data.products;
       
@@ -37,7 +48,6 @@ function ProductSelector({ isOpen, onClose, onProductsAdded, shopId }) {
       setFilteredProducts(firstBatch);
       setLoading(false);
 
-      // Continue fetching remaining products in background
       if (firstResponse.data.hasMore) {
         setLoadingMore(true);
         await fetchRemainingProducts(firstBatch);
@@ -56,34 +66,25 @@ function ProductSelector({ isOpen, onClose, onProductsAdded, shopId }) {
     let hasMore = true;
     let pageCount = 1;
 
-    // Continue fetching until we have all products
     while (hasMore && allProducts.length < 10000) {
       try {
         pageCount++;
-        
-        // Fetch next batch using GraphQL cursor
-        // Note: We'll need to update the API to accept cursor parameter
-        const response = await adminAPI.fetchShopifyProductsPage(shopId, pageCount);
+        const response = await adminAPI.fetchShopifyProducts(shopId);
         
         if (response.data.products.length === 0) {
           hasMore = false;
           break;
         }
 
-        // Append new products
         allProducts = [...allProducts, ...response.data.products];
         
-        // Update state progressively so user sees products appear
         setShopifyProducts([...allProducts]);
         setFilteredProducts(prev => {
-          // If searching, refilter with new products
           if (searchQuery.trim()) {
             return filterProductList(allProducts, searchQuery);
           }
           return [...allProducts];
         });
-
-        console.log(`[Product Fetch] Loaded ${allProducts.length} products (page ${pageCount})`);
 
         hasMore = response.data.hasMore;
 
@@ -92,8 +93,6 @@ function ProductSelector({ isOpen, onClose, onProductsAdded, shopId }) {
         hasMore = false;
       }
     }
-
-    console.log(`[Product Fetch] Complete! Total: ${allProducts.length} products`);
   };
 
   const filterProductList = (products, query) => {
@@ -116,7 +115,13 @@ function ProductSelector({ isOpen, onClose, onProductsAdded, shopId }) {
     setFilteredProducts(filterProductList(shopifyProducts, searchQuery));
   };
 
+  const isProductAlreadyAdded = (productId) => {
+    return existingProductIds.has(productId);
+  };
+
   const toggleProduct = (productId) => {
+    if (isProductAlreadyAdded(productId)) return;
+    
     const newSelected = new Set(selectedProducts);
     if (newSelected.has(productId)) {
       newSelected.delete(productId);
@@ -126,13 +131,24 @@ function ProductSelector({ isOpen, onClose, onProductsAdded, shopId }) {
     setSelectedProducts(newSelected);
   };
 
+  // FIX: Select only products on CURRENT PAGE that are not already added
   const selectAll = () => {
-    const allIds = filteredProducts.map(p => p.id);
-    setSelectedProducts(new Set(allIds));
+    const newSelected = new Set(selectedProducts);
+    currentProducts.forEach(product => {
+      if (!isProductAlreadyAdded(product.id)) {
+        newSelected.add(product.id);
+      }
+    });
+    setSelectedProducts(newSelected);
   };
 
+  // FIX: Deselect only products on CURRENT PAGE
   const deselectAll = () => {
-    setSelectedProducts(new Set());
+    const newSelected = new Set(selectedProducts);
+    currentProducts.forEach(product => {
+      newSelected.delete(product.id);
+    });
+    setSelectedProducts(newSelected);
   };
 
   const handleAddProducts = async () => {
@@ -166,6 +182,11 @@ function ProductSelector({ isOpen, onClose, onProductsAdded, shopId }) {
   const goToPage = (page) => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
   };
+
+  // Check if all current page products are selected (excluding already added)
+  const availableCurrentProducts = currentProducts.filter(p => !isProductAlreadyAdded(p.id));
+  const allCurrentPageSelected = availableCurrentProducts.length > 0 && 
+    availableCurrentProducts.every(p => selectedProducts.has(p.id));
 
   if (!isOpen) return null;
 
@@ -206,20 +227,25 @@ function ProductSelector({ isOpen, onClose, onProductsAdded, shopId }) {
           <div className="flex items-center justify-between mt-4">
             <div className="text-sm text-gray-600">
               {selectedProducts.size} selected
+              {availableCurrentProducts.length < currentProducts.length && (
+                <span className="ml-2 text-gray-400">
+                  ({currentProducts.length - availableCurrentProducts.length} already added)
+                </span>
+              )}
             </div>
             <div className="flex gap-2">
               <button
-                onClick={selectAll}
+                onClick={allCurrentPageSelected ? deselectAll : selectAll}
                 className="text-sm text-primary-600 hover:text-primary-700 font-medium"
               >
-                Select All
+                {allCurrentPageSelected ? 'Deselect Page' : 'Select Page'}
               </button>
               <span className="text-gray-300">|</span>
               <button
-                onClick={deselectAll}
+                onClick={() => setSelectedProducts(new Set())}
                 className="text-sm text-gray-600 hover:text-gray-700 font-medium"
               >
-                Deselect All
+                Clear All
               </button>
             </div>
           </div>
@@ -242,21 +268,27 @@ function ProductSelector({ isOpen, onClose, onProductsAdded, shopId }) {
             <div className="space-y-2">
               {currentProducts.map((product) => {
                 const isSelected = selectedProducts.has(product.id);
+                const alreadyAdded = isProductAlreadyAdded(product.id);
+                
                 return (
                   <div
                     key={product.id}
                     onClick={() => toggleProduct(product.id)}
                     className={`
-                      flex items-start gap-4 p-4 rounded-lg border-2 cursor-pointer transition-all
-                      ${isSelected 
-                        ? 'border-primary-500 bg-primary-50' 
-                        : 'border-gray-200 hover:border-gray-300'
+                      flex items-start gap-4 p-4 rounded-lg border-2 transition-all
+                      ${alreadyAdded 
+                        ? 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed' 
+                        : isSelected 
+                          ? 'border-primary-500 bg-primary-50 cursor-pointer' 
+                          : 'border-gray-200 hover:border-gray-300 cursor-pointer'
                       }
                     `}
                   >
-                    {/* Checkbox */}
+                    {/* Checkbox or Already Added Icon */}
                     <div className="mt-1">
-                      {isSelected ? (
+                      {alreadyAdded ? (
+                        <CheckCircle className="w-5 h-5 text-green-500" />
+                      ) : isSelected ? (
                         <CheckSquare className="w-5 h-5 text-primary-600" />
                       ) : (
                         <Square className="w-5 h-5 text-gray-400" />
@@ -264,34 +296,38 @@ function ProductSelector({ isOpen, onClose, onProductsAdded, shopId }) {
                     </div>
 
                     {/* Product Image */}
-                    <div className="w-16 h-16 bg-gray-100 rounded flex-shrink-0">
+                    <div className="w-16 h-16 bg-gray-100 rounded-lg flex-shrink-0 overflow-hidden">
                       {product.image ? (
-                        <img
-                          src={product.image}
+                        <img 
+                          src={product.image} 
                           alt={product.title}
-                          className="w-full h-full object-cover rounded"
+                          className="w-full h-full object-cover"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <Package className="w-8 h-8 text-gray-300" />
+                          <Package className="w-8 h-8 text-gray-400" />
                         </div>
                       )}
                     </div>
 
-                    {/* Product Info */}
+                    {/* Product Details */}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-gray-900 mb-1">
-                        {product.title}
-                      </h3>
-                      <div className="text-sm text-gray-500 space-y-1">
-                        <p>Shopify ID: {product.id}</p>
-                        {product.variants.length > 0 && (
-                          <p>
-                            Variants: {product.variants.length}
-                            {product.variants[0].sku && ` • SKU: ${product.variants[0].sku}`}
-                          </p>
-                        )}
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-medium text-gray-900">
+                          {product.title}
+                          {alreadyAdded && (
+                            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                              Already Added
+                            </span>
+                          )}
+                        </h3>
                       </div>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Shopify ID: {product.id}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Variants: {product.variants.length} • SKU: {product.variants[0]?.sku || 'N/A'}
+                      </p>
                     </div>
                   </div>
                 );
@@ -301,27 +337,31 @@ function ProductSelector({ isOpen, onClose, onProductsAdded, shopId }) {
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
-            <div className="text-sm text-gray-600">
-              Showing {startIndex + 1}-{Math.min(endIndex, filteredProducts.length)} of {filteredProducts.length}
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">Page {currentPage} of {totalPages}</span>
-              <button
-                onClick={() => goToPage(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => goToPage(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
+        {!loading && totalPages > 1 && (
+          <div className="px-6 py-4 border-t border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-600">
+                Page {currentPage} of {totalPages} 
+                <span className="ml-2 text-gray-400">
+                  ({filteredProducts.length} total products)
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -57,7 +57,7 @@ router.get('/callback', async (req, res) => {
 
     await registerWebhooks(shop, accessToken);
 
-    res.redirect(`${process.env.APP_URL}/install-success?shop=${shop}`);
+    res.redirect(`http://localhost:5173?shop=${shop}&installed=true`);
 
   } catch (error) {
     console.error('OAuth callback error:', error);

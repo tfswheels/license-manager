@@ -151,7 +151,7 @@ export default function Templates() {
                       <span className="font-medium text-gray-900">
                         {template.template_name}
                       </span>
-                      {template.is_default && (
+                      {Boolean(template.is_default) && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-medium rounded">
                           <Star className="w-3 h-3" />
                           Default

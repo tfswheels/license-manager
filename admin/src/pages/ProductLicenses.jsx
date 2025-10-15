@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, Trash2, RotateCcw, Download } from 'lucide-react';
+import { ArrowLeft, Upload, Trash2, RotateCcw, FileText, FileSpreadsheet } from 'lucide-react';
 import { adminAPI } from '../utils/api';
+import * as XLSX from 'xlsx';
 
 function ProductLicenses() {
   const { productId } = useParams();
@@ -10,10 +11,10 @@ function ProductLicenses() {
   const [licenses, setLicenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
-  const [csvContent, setCsvContent] = useState('');
   const [parsedLicenses, setParsedLicenses] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [filter, setFilter] = useState('all'); // all, available, allocated
+  const [fileName, setFileName] = useState('');
 
   useEffect(() => {
     loadData();
@@ -40,25 +41,89 @@ function ProductLicenses() {
     }
   };
 
+  const parseCSV = (content) => {
+    // Simple CSV parsing - split by lines and take first column
+    const lines = content.split(/\r?\n/);
+    const licenses = lines
+      .map(line => {
+        // Handle comma-separated values - take first column
+        const firstColumn = line.split(',')[0];
+        return firstColumn.trim();
+      })
+      .filter(key => key && key.length > 0);
+    
+    return licenses;
+  };
+
+  const parseExcel = (arrayBuffer) => {
+    try {
+      // Read the workbook
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      
+      // Get first sheet
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      
+      // Convert to JSON (array of arrays)
+      const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      
+      // Extract first column, skip empty rows
+      const licenses = data
+        .map(row => {
+          // Get first cell in row
+          const firstCell = row[0];
+          return firstCell ? String(firstCell).trim() : '';
+        })
+        .filter(key => key && key.length > 0);
+      
+      return licenses;
+    } catch (error) {
+      console.error('Excel parse error:', error);
+      throw new Error('Failed to parse Excel file');
+    }
+  };
+
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const content = event.target.result;
-      setCsvContent(content);
+    setFileName(file.name);
+    const fileExtension = file.name.split('.').pop().toLowerCase();
 
-      try {
-        const response = await adminAPI.parseCSV(content);
-        setParsedLicenses(response.data.licenses);
-        setShowUpload(true);
-      } catch (error) {
-        console.error('Failed to parse CSV:', error);
-        alert('Failed to parse CSV file');
+    try {
+      if (fileExtension === 'csv') {
+        // Parse CSV
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const content = event.target.result;
+          const licenses = parseCSV(content);
+          setParsedLicenses(licenses);
+          setShowUpload(true);
+        };
+        reader.readAsText(file);
+
+      } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+        // Parse Excel
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const arrayBuffer = event.target.result;
+          try {
+            const licenses = parseExcel(arrayBuffer);
+            setParsedLicenses(licenses);
+            setShowUpload(true);
+          } catch (error) {
+            alert('Failed to parse Excel file. Please ensure the first column contains license keys.');
+          }
+        };
+        reader.readAsArrayBuffer(file);
+
+      } else {
+        alert('Unsupported file type. Please upload CSV or Excel (.xlsx, .xls) files.');
       }
-    };
-    reader.readAsText(file);
+    } catch (error) {
+      console.error('File parse error:', error);
+      alert('Failed to parse file');
+    }
   };
 
   const handleUploadLicenses = async () => {
@@ -70,7 +135,7 @@ function ProductLicenses() {
       alert(`Successfully uploaded ${parsedLicenses.length} licenses!`);
       setShowUpload(false);
       setParsedLicenses([]);
-      setCsvContent('');
+      setFileName('');
       await loadData();
     } catch (error) {
       console.error('Upload failed:', error);
@@ -156,39 +221,74 @@ function ProductLicenses() {
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
               <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-600 mb-4">
-                Upload a CSV file with license keys (one per line)
+                Upload a CSV or Excel file with license keys
               </p>
               <label className="btn-primary cursor-pointer inline-block">
                 <input
                   type="file"
-                  accept=".csv"
+                  accept=".csv,.xlsx,.xls"
                   onChange={handleFileUpload}
                   className="hidden"
                 />
-                Choose CSV File
+                Choose File
               </label>
             </div>
-            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-800">
-                <strong>CSV Format:</strong> One license key per line. The first column will be used.
-              </p>
+            
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* CSV Instructions */}
+              <div className="p-4 bg-blue-50 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText className="w-5 h-5 text-blue-600" />
+                  <strong className="text-sm text-blue-800">CSV Format</strong>
+                </div>
+                <p className="text-sm text-blue-800">
+                  One license key per line. First column will be used if multiple columns exist.
+                </p>
+                <div className="mt-2 p-2 bg-white rounded text-xs font-mono text-gray-700">
+                  ABC123-DEF456-GHI789<br/>
+                  JKL012-MNO345-PQR678<br/>
+                  STU901-VWX234-YZA567
+                </div>
+              </div>
+              
+              {/* Excel Instructions */}
+              <div className="p-4 bg-green-50 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileSpreadsheet className="w-5 h-5 text-green-600" />
+                  <strong className="text-sm text-green-800">Excel Format (.xlsx, .xls)</strong>
+                </div>
+                <p className="text-sm text-green-800">
+                  First column of first sheet will be used. Each row should contain one license key.
+                </p>
+                <div className="mt-2 p-2 bg-white rounded text-xs text-gray-700">
+                  Column A: License keys<br/>
+                  Row 1: ABC123-DEF456-GHI789<br/>
+                  Row 2: JKL012-MNO345-PQR678
+                </div>
+              </div>
             </div>
           </div>
         ) : (
           <div>
             <div className="mb-4">
-              <p className="text-sm text-gray-600 mb-2">
-                Found <strong>{parsedLicenses.length}</strong> license keys
+              <div className="flex items-center gap-2 mb-2">
+                <FileText className="w-5 h-5 text-gray-600" />
+                <p className="text-sm text-gray-600">
+                  <strong>{fileName}</strong>
+                </p>
+              </div>
+              <p className="text-sm text-gray-600 mb-3">
+                Found <strong className="text-green-600">{parsedLicenses.length}</strong> license keys
               </p>
-              <div className="max-h-40 overflow-y-auto bg-gray-50 p-4 rounded border border-gray-200">
-                {parsedLicenses.slice(0, 10).map((license, idx) => (
-                  <div key={idx} className="text-sm font-mono text-gray-700">
-                    {license}
+              <div className="max-h-60 overflow-y-auto bg-gray-50 p-4 rounded border border-gray-200">
+                {parsedLicenses.slice(0, 20).map((license, idx) => (
+                  <div key={idx} className="text-sm font-mono text-gray-700 py-1">
+                    {idx + 1}. {license}
                   </div>
                 ))}
-                {parsedLicenses.length > 10 && (
-                  <p className="text-sm text-gray-500 mt-2">
-                    ... and {parsedLicenses.length - 10} more
+                {parsedLicenses.length > 20 && (
+                  <p className="text-sm text-gray-500 mt-2 font-sans">
+                    ... and {parsedLicenses.length - 20} more
                   </p>
                 )}
               </div>
@@ -205,6 +305,7 @@ function ProductLicenses() {
                 onClick={() => {
                   setShowUpload(false);
                   setParsedLicenses([]);
+                  setFileName('');
                 }}
                 className="btn-secondary"
               >
@@ -222,60 +323,78 @@ function ProductLicenses() {
           <div className="flex gap-2">
             <button
               onClick={() => setFilter('all')}
-              className={filter === 'all' ? 'badge badge-info' : 'badge'}
+              className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                filter === 'all' 
+                  ? 'bg-primary-100 text-primary-700' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
             >
-              All
+              All ({licenses.length})
             </button>
             <button
               onClick={() => setFilter('available')}
-              className={filter === 'available' ? 'badge badge-success' : 'badge'}
+              className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                filter === 'available' 
+                  ? 'bg-green-100 text-green-700' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
             >
-              Available
+              Available ({licenses.filter(l => !l.allocated).length})
             </button>
             <button
               onClick={() => setFilter('allocated')}
-              className={filter === 'allocated' ? 'badge badge-warning' : 'badge'}
+              className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                filter === 'allocated' 
+                  ? 'bg-blue-100 text-blue-700' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
             >
-              Allocated
+              Allocated ({licenses.filter(l => l.allocated).length})
             </button>
           </div>
         </div>
 
         {licenses.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">No licenses found</p>
+          <div className="text-center py-12">
+            <p className="text-gray-500">No licenses found</p>
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
                   <th className="text-left py-3 px-4 font-medium text-gray-700">License Key</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-700">Status</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Allocated At</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-700">Order</th>
                   <th className="text-right py-3 px-4 font-medium text-gray-700">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {licenses.map((license) => (
                   <tr key={license.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-4 font-mono text-sm">{license.license_key}</td>
+                    <td className="py-3 px-4 font-mono text-sm text-gray-900">
+                      {license.license_key}
+                    </td>
                     <td className="py-3 px-4">
-                      {license.allocated ? (
-                        <span className="badge badge-warning">Allocated</span>
-                      ) : (
-                        <span className="badge badge-success">Available</span>
-                      )}
+                      <span
+                        className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                          license.allocated
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-green-100 text-green-800'
+                        }`}
+                      >
+                        {license.allocated ? 'Allocated' : 'Available'}
+                      </span>
                     </td>
                     <td className="py-3 px-4 text-sm text-gray-600">
-                      {license.allocated_at
-                        ? new Date(license.allocated_at).toLocaleDateString()
-                        : '-'}
+                      {license.order_number || '-'}
                     </td>
                     <td className="py-3 px-4 text-right">
-                      <div className="flex gap-2 justify-end">
+                      <div className="flex items-center justify-end gap-2">
                         {license.allocated ? (
                           <button
                             onClick={() => handleReleaseLicense(license.id)}
-                            className="text-blue-600 hover:text-blue-800"
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                             title="Release license"
                           >
                             <RotateCcw className="w-4 h-4" />
@@ -283,7 +402,7 @@ function ProductLicenses() {
                         ) : (
                           <button
                             onClick={() => handleDeleteLicense(license.id)}
-                            className="text-red-600 hover:text-red-800"
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             title="Delete license"
                           >
                             <Trash2 className="w-4 h-4" />

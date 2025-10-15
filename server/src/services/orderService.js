@@ -121,11 +121,13 @@ export async function processOrder(shopDomain, orderData) {
 }
 
 async function allocateLicenses(connection, productId, orderId, quantity) {
+  const safeLimit = parseInt(quantity) || 1; // Ensure it's a number
+  
   const [availableLicenses] = await connection.execute(
     `SELECT id, license_key FROM licenses 
      WHERE product_id = ? AND allocated = FALSE 
-     LIMIT ?`,
-    [productId, quantity]
+     LIMIT ${safeLimit}`,  // ← Interpolate directly, not as placeholder
+    [productId]  // ← Only one placeholder now
   );
 
   if (availableLicenses.length < quantity) {
