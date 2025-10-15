@@ -1,5 +1,6 @@
 // admin/src/pages/Dashboard.jsx
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';  // Add this import
 import { Package, ShoppingCart, Key, AlertCircle, Mail } from 'lucide-react';
 import { adminAPI } from '../utils/api';
 
@@ -8,6 +9,7 @@ function Dashboard() {
   const [stats, setStats] = useState(null);
   const [selectedShop, setSelectedShop] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -16,17 +18,28 @@ function Dashboard() {
   const loadData = async () => {
     try {
       setLoading(true);
+      setError(null);
       
       const shopsRes = await adminAPI.getShops();
-      setShops(shopsRes.data.shops);
+      
+      if (shopsRes?.data?.shops) {
+        setShops(shopsRes.data.shops);
 
-      if (shopsRes.data.shops.length > 0) {
-        const targetShopId = selectedShop || shopsRes.data.shops[0].id;
-        const statsRes = await adminAPI.getShopStats(targetShopId);
-        setStats(statsRes.data);
+        if (shopsRes.data.shops.length > 0) {
+          const targetShopId = selectedShop || shopsRes.data.shops[0].id;
+          const statsRes = await adminAPI.getShopStats(targetShopId);
+          
+          if (statsRes?.data) {
+            setStats(statsRes.data);
+          }
+        }
+      } else {
+        setShops([]);
       }
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
+      setError('Failed to load dashboard. Please refresh the page.');
+      setShops([]);
     } finally {
       setLoading(false);
     }
@@ -40,7 +53,21 @@ function Dashboard() {
     );
   }
 
-  if (shops.length === 0) {
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
+          <p className="text-red-600 mb-4">{error}</p>
+          <button onClick={loadData} className="btn-primary">
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!shops || shops.length === 0) {
     return (
       <div className="text-center py-12">
         <Key className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -132,24 +159,20 @@ function Dashboard() {
       <div className="card">
         <h2 className="text-xl font-bold text-gray-900 mb-4">Installed Shops</h2>
         <div className="space-y-3">
-          {shops.length === 0 ? (
-            <p className="text-gray-500">No shops installed yet</p>
-          ) : (
-            shops.map((shop) => (
-              <div
-                key={shop.id}
-                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-              >
-                <div>
-                  <p className="font-medium text-gray-900">{shop.shop_domain}</p>
-                  <p className="text-sm text-gray-500">
-                    Installed: {new Date(shop.installed_at).toLocaleDateString()}
-                  </p>
-                </div>
-                <span className="badge badge-success">Active</span>
+          {shops.map((shop) => (
+            <div
+              key={shop.id}
+              className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+            >
+              <div>
+                <p className="font-medium text-gray-900">{shop.shop_domain}</p>
+                <p className="text-sm text-gray-500">
+                  Installed: {new Date(shop.installed_at).toLocaleDateString()}
+                </p>
               </div>
-            ))
-          )}
+              <span className="badge badge-success">Active</span>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -157,32 +180,32 @@ function Dashboard() {
       <div className="card">
         <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          
-            href="/products"
+          <Link
+            to="/products"
             className="p-6 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 hover:scale-105 transition-all duration-200"
-          <a>
+          >
             <Package className="w-8 h-8 text-blue-600 mb-2" />
             <h3 className="font-medium text-gray-900">Manage Products</h3>
             <p className="text-sm text-gray-500 mt-1">Sync and link products to licenses</p>
-          </a>
+          </Link>
           
-          
-            href="/orders"
+          <Link
+            to="/orders"
             className="p-6 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 hover:scale-105 transition-all duration-200"
-          <a>
+          >
             <ShoppingCart className="w-8 h-8 text-blue-600 mb-2" />
             <h3 className="font-medium text-gray-900">View Orders</h3>
             <p className="text-sm text-gray-500 mt-1">Check order history and allocations</p>
-          </a>
+          </Link>
           
-          
-            href="/templates"
+          <Link
+            to="/templates"
             className="p-6 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 hover:scale-105 transition-all duration-200"
-          <a>
+          >
             <Mail className="w-8 h-8 text-blue-600 mb-2" />
             <h3 className="font-medium text-gray-900">Manage Templates</h3>
             <p className="text-sm text-gray-500 mt-1">Create and edit email templates</p>
-          </a>
+          </Link>
         </div>
       </div>
     </div>
