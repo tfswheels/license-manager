@@ -23,7 +23,7 @@ function Layout({ children }) {
       <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center gap-2">
-            <Key className="w-8 h-8 text-primary-600" />
+            <Key className="w-8 h-8 text-blue-600" />
             <div>
               <h1 className="text-xl font-bold text-gray-900">License Manager</h1>
               <p className="text-xs text-gray-500">Shopify App</p>
@@ -43,7 +43,7 @@ function Layout({ children }) {
                 className={`
                   flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200
                   ${active 
-                    ? 'bg-primary-50 text-primary-700 font-medium shadow-sm' 
+                    ? 'bg-blue-50 text-blue-700 font-medium shadow-sm' 
                     : 'text-gray-700 hover:bg-gray-100'
                   }
                 `}

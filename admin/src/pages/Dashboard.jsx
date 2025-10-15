@@ -154,27 +154,27 @@ function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <a
             href="/products"
-            className="p-6 border-2 border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 hover:scale-105 transition-all duration-200"
+            className="p-6 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 hover:scale-105 transition-all duration-200"
           >
-            <Package className="w-8 h-8 text-primary-600 mb-2" />
+            <Package className="w-8 h-8 text-blue-600 mb-2" />
             <h3 className="font-medium text-gray-900">Manage Products</h3>
             <p className="text-sm text-gray-500 mt-1">Sync and link products to licenses</p>
           </a>
           
           <a
             href="/orders"
-            className="p-6 border-2 border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 hover:scale-105 transition-all duration-200"
+            className="p-6 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 hover:scale-105 transition-all duration-200"
           >
-            <ShoppingCart className="w-8 h-8 text-primary-600 mb-2" />
+            <ShoppingCart className="w-8 h-8 text-blue-600 mb-2" />
             <h3 className="font-medium text-gray-900">View Orders</h3>
             <p className="text-sm text-gray-500 mt-1">Check order history and allocations</p>
           </a>
           
           <a
             href="/templates"
-            className="p-6 border-2 border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 hover:scale-105 transition-all duration-200"
+            className="p-6 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 hover:scale-105 transition-all duration-200"
           >
-            <Mail className="w-8 h-8 text-primary-600 mb-2" />
+            <Mail className="w-8 h-8 text-blue-600 mb-2" />
             <h3 className="font-medium text-gray-900">Manage Templates</h3>
             <p className="text-sm text-gray-500 mt-1">Create and edit email templates</p>
           </a>
