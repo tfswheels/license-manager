@@ -134,34 +134,37 @@ function Dashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="card">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <a
-            href="/products"
-            className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 transition-colors"
-          >
-            <Package className="w-8 h-8 text-primary-600 mb-2" />
-            <h3 className="font-medium text-gray-900">Manage Products</h3>
-            <p className="text-sm text-gray-500 mt-1">Sync and link products to licenses</p>
-          </a>
-          
-          <a
-            href="/orders"
-            className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 transition-colors"
-          >
-            <ShoppingCart className="w-8 h-8 text-primary-600 mb-2" />
-            <h3 className="font-medium text-gray-900">View Orders</h3>
-            <p className="text-sm text-gray-500 mt-1">Check order history and allocations</p>
-          </a>
-          
-          <div className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 transition-colors cursor-pointer">
-            <Key className="w-8 h-8 text-primary-600 mb-2" />
-            <h3 className="font-medium text-gray-900">Upload Licenses</h3>
-            <p className="text-sm text-gray-500 mt-1">Add new license keys to inventory</p>
+        <div className="card">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+              href="/products"
+              className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 hover:scale-105 transition-all"
+            <a>
+              <Package className="w-8 h-8 text-primary-600 mb-2" />
+              <h3 className="font-medium text-gray-900">Manage Products</h3>
+              <p className="text-sm text-gray-500 mt-1">Sync and link products to licenses</p>
+            </a>
+            
+            
+              href="/orders"
+              className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 hover:scale-105 transition-all"
+            <a>
+              <ShoppingCart className="w-8 h-8 text-primary-600 mb-2" />
+              <h3 className="font-medium text-gray-900">View Orders</h3>
+              <p className="text-sm text-gray-500 mt-1">Check order history and allocations</p>
+            </a>
+            
+            
+              href="/templates"
+              className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-500 hover:bg-primary-50 hover:scale-105 transition-all"
+            <a>
+              <Mail className="w-8 h-8 text-primary-600 mb-2" />
+              <h3 className="font-medium text-gray-900">Manage Templates</h3>
+              <p className="text-sm text-gray-500 mt-1">Create and edit email templates</p>
+            </a>
           </div>
         </div>
-      </div>
     </div>
   );
 }
