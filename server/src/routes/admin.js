@@ -30,6 +30,8 @@ router.get('/shops', async (req, res) => {
   }
 });
 
+
+
 // Fetch products from Shopify using GraphQL with cursor-based pagination
 router.get('/shops/:shopId/shopify-products', async (req, res) => {
   try {
@@ -1037,5 +1039,6 @@ router.get('/stats', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch stats' });
   }
 });
+
 
 export default router;
