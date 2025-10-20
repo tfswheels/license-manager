@@ -1,68 +1,95 @@
-// server/run-migration.js
-import mysql from 'mysql2/promise';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import fs from 'fs';
-import dotenv from 'dotenv';
+import db from './src/config/database.js';
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 async function runMigration() {
-  let connection;
-  
+  const migrationFile = process.argv[2] || '003_template_assignment_rules.sql';
+  console.log(`🚀 Running migration: ${migrationFile}\n`);
+
   try {
-    console.log('🔌 Connecting to database...');
-    
-    connection = await mysql.createConnection({
-      host: process.env.DB_HOST,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
-      port: parseInt(process.env.DB_PORT || '3306')
-    });
-
-    console.log('✅ Connected to database');
-
     // Read migration file
-    console.log('📋 Reading migration file...');
-    const migration = fs.readFileSync('./migrations/002_email_templates.sql', 'utf8');
+    const migrationPath = join(__dirname, 'migrations', migrationFile);
     
-    // Split by semicolon and execute each statement
-    const statements = migration
+    if (!fs.existsSync(migrationPath)) {
+      throw new Error(`Migration file not found: ${migrationPath}`);
+    }
+    
+    const sql = fs.readFileSync(migrationPath, 'utf8');
+
+    // Split by semicolon and filter empty statements
+    const statements = sql
       .split(';')
-      .map(s => {
-        // Remove comment lines
-        return s.split('\n')
-          .filter(line => !line.trim().startsWith('--'))
-          .join('\n')
-          .trim();
-      })
-      .filter(s => s.length > 0);
+      .map(s => s.trim())
+      .filter(s => s.length > 0 && !s.startsWith('--') && !s.startsWith('COMMENT'));
 
-    console.log(`📦 Executing ${statements.length} statements...\n`);
+    console.log(`📝 Found ${statements.length} SQL statements to execute\n`);
 
+    // Execute each statement
     for (let i = 0; i < statements.length; i++) {
       const statement = statements[i];
-      console.log(`${i + 1}. Executing statement...`);
-      await connection.query(statement);
-      console.log('   ✅ Done');
+      console.log(`[${i + 1}/${statements.length}] Executing...`);
+      
+      try {
+        await db.execute(statement);
+        console.log(`✅ Success\n`);
+      } catch (error) {
+        // Ignore "Duplicate column" errors (migration already run)
+        if (error.code === 'ER_DUP_FIELDNAME') {
+          console.log(`⚠️  Column already exists, skipping\n`);
+        } else {
+          throw error;
+        }
+      }
     }
 
-    console.log('\n🎉 Migration completed successfully!');
+    console.log('✨ Migration completed successfully!');
+    console.log('\n📊 Verifying tables...');
 
-    // Show tables
-    const [tables] = await connection.query('SHOW TABLES');
-    console.log('\n📊 Current tables:');
-    tables.forEach(table => {
-      console.log(`  - ${Object.values(table)[0]}`);
-    });
+    // Verify the new table exists
+    const [tables] = await db.execute(`
+      SELECT TABLE_NAME 
+      FROM information_schema.TABLES 
+      WHERE TABLE_SCHEMA = DATABASE() 
+      AND TABLE_NAME = 'template_assignment_rules'
+    `);
+
+    if (tables.length > 0) {
+      console.log('✅ template_assignment_rules table created');
+
+      // Check columns
+      const [columns] = await db.execute(`
+        SELECT COLUMN_NAME 
+        FROM information_schema.COLUMNS 
+        WHERE TABLE_SCHEMA = DATABASE() 
+        AND TABLE_NAME = 'template_assignment_rules'
+      `);
+      console.log(`   Columns: ${columns.map(c => c.COLUMN_NAME).join(', ')}`);
+    }
+
+    // Verify shops table updates
+    const [shopColumns] = await db.execute(`
+      SELECT COLUMN_NAME 
+      FROM information_schema.COLUMNS 
+      WHERE TABLE_SCHEMA = DATABASE() 
+      AND TABLE_NAME = 'shops'
+      AND COLUMN_NAME IN ('template_rule_exclusion_tag', 'last_rule_application')
+    `);
+
+    if (shopColumns.length === 2) {
+      console.log('✅ shops table updated with new columns');
+    }
+
+    console.log('\n🎉 All done!\n');
+    process.exit(0);
 
   } catch (error) {
-    console.error('❌ Migration error:', error.message);
-    console.error('Full error:', error);
+    console.error('\n❌ Migration failed:', error.message);
+    console.error(error);
     process.exit(1);
-  } finally {
-    if (connection) {
-      await connection.end();
-    }
   }
 }
 

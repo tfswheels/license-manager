@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
 import webhookRoutes from './routes/webhooks.js';
 import adminRoutes from './routes/admin.js';
+import templateRulesRoutes from './routes/templateRules.js';
 import './config/database.js';
 
 dotenv.config();
@@ -30,6 +31,7 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use('/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/admin', templateRulesRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

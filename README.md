@@ -35,7 +35,8 @@ A complete digital license distribution system for Shopify stores. Automatically
 - HTML and plain text versions
 - Auto-generate plain text from HTML
 - Product-specific template assignment
-- Set shop default template (⭐)
+- Set shop default template
+- **Automatic template assignment via rules** ⭐ NEW
 - Template variable system: `{{first_name}}`, `{{last_name}}`, `{{order_number}}`, `{{license_keys}}`, `{{product_name}}`
 - Template validation with warnings
 - Click-to-insert variable palette
@@ -46,6 +47,7 @@ A complete digital license distribution system for Shopify stores. Automatically
 - Bulk product selection with checkboxes
 - Bulk template assignment
 - Individual product template selection
+- **Product metadata storage (tags, vendor, price)** ⭐ NEW
 - License inventory tracking per product
 - Pagination (25/50/100/250 per page)
 - Product filtering and sorting
@@ -61,6 +63,17 @@ A complete digital license distribution system for Shopify stores. Automatically
 - Release allocated licenses back to pool
 - Download license lists
 
+### ⚙️ Settings & Automation ✅ NEW
+- **Template Assignment Rules Engine** - Auto-assign templates based on:
+  - Product tags (e.g., "software", "game")
+  - Vendor/manufacturer
+  - Price ranges (e.g., $10-$50)
+  - Collections (ID-based)
+- **Rule Priority System** - Control rule application order
+- **Exclusion Tags** - Bypass rules for specific products
+- **Bulk Rule Application** - Apply rules to all products at once
+- **Active/Inactive Rules** - Toggle rules without deletion
+
 ### 📊 Complete Admin Dashboard ✅
 - Real-time statistics (orders, licenses, products)
 - Shop selector for multi-store support
@@ -69,6 +82,7 @@ A complete digital license distribution system for Shopify stores. Automatically
 - License allocation status indicators
 - Warning indicators for incomplete allocations
 - Detailed order view
+- **Settings page for system configuration** ⭐ NEW
 - Responsive design
 - Modern UI with Tailwind CSS
 
@@ -91,24 +105,25 @@ Customer Order (Shopify)
 Webhook Handler (Auto-registered on install)
     ↓
 License Allocator
-    ├→ Check Product → Get Assigned Template
+    ├→ Check Product → Apply Template Rules → Get Template
     ├→ Allocate Licenses from Available Pool
     ├→ Send Custom Email (SendGrid)
     ├→ Update Database (mark allocated)
     └→ Check Inventory → Send Alert if Low
 ```
 
-### Database Schema (8 Tables)
+### Database Schema (9 Tables)
 
 **Core Tables:**
-- `shops` - Installed Shopify stores with OAuth tokens
-- `products` - Shopify products linked to license pools and templates
+- `shops` - Installed Shopify stores with OAuth tokens, exclusion tags
+- `products` - Shopify products with tags, vendor, price, template assignment
 - `licenses` - License keys with allocation status
 - `orders` - Order records from Shopify
 - `order_items` - Line items with allocation tracking
 - `email_logs` - Audit trail of sent emails
 - `email_templates` - Custom email templates
 - `inventory_alerts` - Low stock notifications
+- `template_assignment_rules` - **NEW** - Automatic template assignment rules
 
 ---
 
@@ -125,6 +140,8 @@ License Allocator
 - [x] Custom email templates
 - [x] Template editor with live preview
 - [x] Production deployment
+- [x] **Template assignment rules** ⭐
+- [x] **Settings page** ⭐
 
 ---
 
@@ -139,7 +156,7 @@ License Allocator
 6. [ ] **Show Order Price** - Display order value on Orders page and Order details
 
 #### Product & License Management
-7. [ ] **Show Product Price** - Display product price on Products page
+7. [ ] **Show Product Price** - Display product price on Products page (data already stored)
 8. [ ] **Manual License Send** - Send license directly to customer (name + email), creates free order record
 9. [ ] **License Send Method** - Choose allocation strategy: FIFO (first-in-first-out), LIFO (last-in-first-out), or Random
 10. [ ] **License Uniqueness Enforcement** - Prevent duplicate license allocation if enabled
@@ -150,23 +167,23 @@ License Allocator
     - Send "Contact merchant" message
 
 #### Template System
-13. [ ] **Template Assignment Rules** - Auto-assign templates based on:
-    - Product tags
-    - Collections
-    - Price ranges
-    - Vendor
-14. [ ] **Template Rule Exclusion Tag** - Add tag to products to exclude from automatic template rules
-15. [ ] **Template Rule Re-assignment** - When rules saved, re-assign all products automatically
+13. [x] **Template Assignment Rules** - Auto-assign templates based on:
+    - [x] Product tags
+    - [x] Price ranges
+    - [x] Vendor
+    - [ ] Collections (framework ready, needs full implementation)
+14. [x] **Template Rule Exclusion Tag** - Add tag to products to exclude from automatic template rules
+15. [x] **Template Rule Re-assignment** - When rules saved, re-assign all products automatically
 16. [ ] **Template Preview Emails** - Send test emails with sample data
 17. [ ] **Template Duplication** - Copy existing templates
 
 #### Settings & Configuration
-18. [ ] **Settings Page** 🔥 - Centralized settings management for:
-    - Template assignment rules
-    - License allocation strategy
-    - Uniqueness settings
-    - Out-of-stock behavior
-    - Email delivery preferences
+18. [x] **Settings Page** 🔥 - Centralized settings management for:
+    - [x] Template assignment rules
+    - [ ] License allocation strategy (infrastructure ready)
+    - [ ] Uniqueness settings
+    - [ ] Out-of-stock behavior
+    - [ ] Email delivery preferences
 19. [ ] **Email Settings Per Shop** - Custom from addresses and sender names
 20. [ ] **Advanced Reporting** - Export orders, licenses, and analytics data
 
@@ -198,7 +215,7 @@ License Allocator
 
 | Priority | Features | Est. Time | Status |
 |----------|----------|-----------|--------|
-| 🔥 **HIGH** | Settings Page, Manual Allocation, Email Updates, Resend Email | 15-20 hours | Next Sprint |
+| 🔥 **HIGH** | Manual Allocation, Email Updates, Resend Email | 10-15 hours | Next Sprint |
 | 🟡 **MEDIUM** | Delivery Status, Manual Send, Out-of-Stock Behavior, Uniqueness | 20-25 hours | Sprint 2-3 |
 | 🟢 **LOW** | Price Display, Send Method, Template Preview, Reporting | 10-15 hours | Sprint 3-4 |
 | ⚪ **DEFER** | Customer Portal, Auto-Gen, Fraud Detection, Analytics | 100+ hours | Phase 3 |
@@ -207,37 +224,36 @@ License Allocator
 
 ## 🗓️ Recommended Implementation Order
 
-### **Sprint 1 (Week 1) - Core Fixes** ⚡
-1. Settings Page (infrastructure foundation)
-2. Manual License Allocation
-3. Update Customer Email
-4. Resend License Email
-5. Show Order/Product Prices
+### ✅ **Sprint 1 (Week 1) - COMPLETE** 
+1. ✅ Settings Page (infrastructure foundation)
+2. ✅ Template Assignment Rules
+3. ✅ Product metadata storage
+
+**Completed: ~12 hours**
+
+### **Sprint 2 (Week 2) - Core Customer Service** ⚡
+1. Manual License Allocation
+2. Update Customer Email
+3. Resend License Email
+4. Show Order/Product Prices
+
+**Total: ~12-15 hours**
+
+### **Sprint 3 (Week 3) - Customer Experience** 🎨
+5. Out-of-Stock Behavior
+6. Manual License Send
+7. Template Preview Emails
+8. Email Delivery Status
 
 **Total: ~15-20 hours**
 
-### **Sprint 2 (Week 2) - Customer Experience** 🎨
-6. Out-of-Stock Behavior
-7. Manual License Send
-8. Template Preview Emails
-9. Email Delivery Status
-
-**Total: ~15-20 hours**
-
-### **Sprint 3 (Week 3) - Advanced Features** 🚀
-10. License Uniqueness Enforcement
-11. License Send Method (FIFO/LIFO/Random)
-12. Email Settings Per Shop
-13. Auto-retry Failed Allocations
+### **Sprint 4 (Week 4) - Advanced Features** 🚀
+9. License Uniqueness Enforcement
+10. License Send Method (FIFO/LIFO/Random)
+11. Email Settings Per Shop
+12. Auto-retry Failed Allocations
 
 **Total: ~18-25 hours**
-
-### **Sprint 4 (Month 2) - Power Features** 💪
-14. Template Assignment Rules (full system)
-15. Template Duplication
-16. Advanced Reporting
-
-**Total: ~25-30 hours**
 
 ---
 
@@ -248,6 +264,7 @@ License Allocator
 | Price | $19.99/mo | $15-159/mo | $15-35/mo |
 | Unlimited Templates | ✅ | ❌ | ❌ |
 | Product-Specific Templates | ✅ | ❌ | ❌ |
+| **Template Assignment Rules** | ✅ ⭐ | ❌ | ❌ |
 | Excel Upload | ✅ | ❌ | ❌ |
 | Live Template Preview | ✅ | ❌ | ❌ |
 | Modern UI | ✅ | ❌ | ⚠️ |
@@ -255,7 +272,6 @@ License Allocator
 | Real-time Stats | ✅ | ⚠️ | ⚠️ |
 | GraphQL Product Fetch | ✅ | ❌ | ❌ |
 | Multi-Shop Support | ✅ | ⚠️ | ⚠️ |
-| Template Assignment Rules | 🔜 | ❌ | ❌ |
 | License Uniqueness | 🔜 | ❌ | ⚠️ |
 
 ---
@@ -267,8 +283,18 @@ License Allocator
 - Licenses can have duplicates (inventory system)
 - Allocated licenses locked to `order_id`
 - Products with NULL `email_template_id` use shop's default template
+- **Template rules evaluated by priority (lower number = higher priority)**
+- **Products store tags, vendor, price for rule matching**
 - Connection pool max: 10 connections
 - Index optimization on frequently queried fields
+
+### Template Assignment Rules
+- **Rule Types**: tag, vendor, price_range, collection
+- **Priority System**: Rules evaluated in order (1-999, lower first)
+- **Exclusion Mechanism**: Products with exclusion tag bypass all rules
+- **Active/Inactive**: Toggle rules without deletion
+- **Bulk Application**: Apply all rules to all products with one click
+- **Automatic Updates**: Can trigger re-assignment when products added
 
 ### Email System
 - Both HTML and plain text versions sent
@@ -276,6 +302,7 @@ License Allocator
 - SendGrid free tier: 100 emails/day
 - Template variables replaced at send time
 - Default template auto-created on shop install
+- **Template selection via rules or manual assignment**
 - Customer name handling: Uses first/last name or defaults to "Customer"
 
 ### Webhooks
@@ -326,8 +353,6 @@ License Allocator
 ## 🐛 Known Issues
 
 **None currently!** 🎉
-
-The app is stable and production-ready.
 
 ---
 
@@ -436,6 +461,17 @@ DELETE /api/admin/templates/:id  - Delete template
 PUT  /api/admin/templates/:id/default - Set as default
 ```
 
+**Template Rules (NEW):**
+```
+GET  /api/admin/shops/:id/template-rules              - Get all rules
+POST /api/admin/shops/:id/template-rules              - Create rule
+PUT  /api/admin/shops/:id/template-rules/:ruleId      - Update rule
+DELETE /api/admin/shops/:id/template-rules/:ruleId    - Delete rule
+POST /api/admin/shops/:id/template-rules/apply        - Apply all rules
+GET  /api/admin/shops/:id/template-rules/exclusion-tag - Get exclusion tag
+PUT  /api/admin/shops/:id/template-rules/exclusion-tag - Set exclusion tag
+```
+
 **Stats:**
 ```
 GET  /api/admin/shops/:id/stats  - Get shop statistics
@@ -457,52 +493,29 @@ GET  /api/admin/shops/:id/stats  - Get shop statistics
 2. Framework preset: Vite
 3. Build: `npm run build`
 4. Output: `dist`
-5. Auto-deploys on push to `main`
+5. Deploy
+
+### Database Migrations
+
+When deploying new features:
+```bash
+# Run migrations in order
+node run-migration.js
+```
 
 ---
 
-## 🎉 Project Timeline
+## 🎓 Recent Updates
 
-- **October 13, 2025** - Project started, backend complete
-- **October 14, 2025** - Frontend complete, production deployment
-- **October 15, 2025** - Database migrated to Railway (private network)
-- **October 16, 2025** - UI improvements, dashboard enhancements
-- **Status:** Live and operational!
-
----
-
-## 👥 Team
-
-**Developer:** Jeremiah (tfswheels)  
-**GitHub:** https://github.com/tfswheels/license-manager  
-**Contact:** jeremiah@tfswheels.com  
+### October 17, 2025 - Settings & Template Rules
+- ✅ Added Settings page with rule management UI
+- ✅ Implemented template assignment rules engine
+- ✅ Added product metadata storage (tags, vendor, price)
+- ✅ Created rule priority system
+- ✅ Added exclusion tag functionality
+- ✅ Updated product fetching to include metadata
+- ✅ Database schema expanded to 9 tables
 
 ---
 
-## 📄 License
-
-Private project - All rights reserved  
-© 2025 TFS Wheels
-
----
-
-## 📞 Support
-
-For questions or issues:
-- **GitHub Issues:** Create an issue in this repository
-- **Email:** jeremiah@tfswheels.com
-
----
-
-## 🙏 Acknowledgments
-
-Built with:
-- [Shopify](https://shopify.dev) - E-commerce platform
-- [SendGrid](https://sendgrid.com) - Email delivery
-- [Railway](https://railway.app) - Backend hosting
-- [Vercel](https://vercel.com) - Frontend hosting
-- [Google Cloud](https://cloud.google.com) - Database hosting
-
----
-
-**Ready for customers!** 🎯
+**Built with ❤️ for digital product sellers who deserve better tools.**

@@ -1,6 +1,6 @@
 // admin/src/components/Layout.jsx
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Package, ShoppingCart, Key, Mail } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, Key, Mail, Settings } from 'lucide-react';
 
 function Layout({ children }) {
   const location = useLocation();
@@ -10,6 +10,7 @@ function Layout({ children }) {
     { name: 'Products', href: '/products', icon: Package },
     { name: 'Orders', href: '/orders', icon: ShoppingCart },
     { name: 'Templates', href: '/templates', icon: Mail },
+    { name: 'Settings', href: '/settings', icon: Settings },
   ];
 
   const isActive = (href) => {
@@ -58,7 +59,7 @@ function Layout({ children }) {
         <div className="p-4 border-t border-gray-200">
           <div className="text-xs text-gray-500">
             <p>v1.0.0</p>
-            <p>Day 3 - Templates ✨</p>
+            <p>Day 4 - Settings ⚙️</p>
           </div>
         </div>
       </aside>
