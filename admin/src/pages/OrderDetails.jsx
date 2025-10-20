@@ -133,6 +133,9 @@ function OrderDetails() {
           </button>
         )}
       </div>
+      <div className="bg-red-500 text-white p-4">
+        TEST: If you see this, the file is updating correctly
+      </div>
 
       {/* Status Alert */}
       {hasIssues && (
