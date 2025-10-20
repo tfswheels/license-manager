@@ -101,7 +101,6 @@ export default function Settings() {
         priority: newRule.priority
       });
 
-      alert('Rule created successfully');
       setShowAddRule(false);
       setNewRule({
         template_id: '',
@@ -109,6 +108,22 @@ export default function Settings() {
         rule_value: '',
         priority: 100
       });
+
+      // Ask if user wants to apply the rule now
+      if (confirm('Rule created! Apply this rule to existing products now?')) {
+        setApplying(true);
+        try {
+          const response = await adminAPI.applyTemplateRules(selectedShop);
+          const result = response.data || response;
+          alert(`Rules applied!\n\n${result.applied || 0} products updated\n${result.skipped || 0} products skipped\n${result.errors || 0} errors`);
+        } catch (error) {
+          console.error('Failed to apply rules:', error);
+          alert('Failed to apply rules');
+        } finally {
+          setApplying(false);
+        }
+      }
+
       loadShopData();
     } catch (error) {
       console.error('Failed to create rule:', error);
