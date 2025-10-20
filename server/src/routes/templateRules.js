@@ -29,34 +29,18 @@ router.post('/shops/:shopId/template-rules', async (req, res) => {
       });
     }
 
-    // Validate rule_type
-    const validTypes = ['tag', 'collection', 'price_range', 'vendor'];
-    if (!validTypes.includes(rule_type)) {
+    // Only allow 'tag' rule type
+    if (rule_type !== 'tag') {
       return res.status(400).json({ 
-        error: `Invalid rule_type. Must be one of: ${validTypes.join(', ')}` 
+        error: 'Only "tag" rule type is supported' 
       });
-    }
-
-    // Validate price_range format
-    if (rule_type === 'price_range') {
-      try {
-        const range = JSON.parse(rule_value);
-        if (typeof range.min !== 'number' && range.min !== null) {
-          return res.status(400).json({ error: 'price_range must have numeric min value' });
-        }
-        if (typeof range.max !== 'number' && range.max !== null) {
-          return res.status(400).json({ error: 'price_range must have numeric max value' });
-        }
-      } catch (e) {
-        return res.status(400).json({ error: 'price_range must be valid JSON with min/max' });
-      }
     }
 
     const ruleId = await templateRulesService.createRule(
       shopId, 
       template_id, 
       rule_type, 
-      rule_value, 
+      rule_value.trim(), // Trim whitespace
       priority || 100
     );
 
@@ -91,19 +75,9 @@ router.put('/shops/:shopId/template-rules/:ruleId', async (req, res) => {
       return res.status(403).json({ error: 'Not authorized to update this rule' });
     }
 
-    // Validate price_range if being updated
-    if (updates.rule_value && updates.rule_type === 'price_range') {
-      try {
-        const range = JSON.parse(updates.rule_value);
-        if (typeof range.min !== 'number' && range.min !== null) {
-          return res.status(400).json({ error: 'price_range must have numeric min value' });
-        }
-        if (typeof range.max !== 'number' && range.max !== null) {
-          return res.status(400).json({ error: 'price_range must have numeric max value' });
-        }
-      } catch (e) {
-        return res.status(400).json({ error: 'price_range must be valid JSON' });
-      }
+    // Trim rule_value if present
+    if (updates.rule_value) {
+      updates.rule_value = updates.rule_value.trim();
     }
 
     await templateRulesService.updateRule(ruleId, updates);

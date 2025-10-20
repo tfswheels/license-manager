@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Plus, Trash2, Save, Play, Tag, DollarSign, Package, Store } from 'lucide-react';
+import { Settings as SettingsIcon, Plus, Trash2, Save, Play, Tag } from 'lucide-react';
 import { adminAPI } from '../utils/api';
 
 export default function Settings() {
@@ -81,23 +81,11 @@ export default function Settings() {
       return;
     }
 
-    // For price_range, convert to JSON
-    let ruleValue = newRule.rule_value;
-    if (newRule.rule_type === 'price_range') {
-      try {
-        const [min, max] = newRule.rule_value.split('-').map(v => parseFloat(v.trim()) || null);
-        ruleValue = JSON.stringify({ min, max });
-      } catch (error) {
-        alert('Invalid price range format. Use: 10-50');
-        return;
-      }
-    }
-
     try {
       await adminAPI.createTemplateRule(selectedShop, {
         template_id: newRule.template_id,
-        rule_type: newRule.rule_type,
-        rule_value: ruleValue,
+        rule_type: 'tag', // Always tag
+        rule_value: newRule.rule_value.trim(),
         priority: newRule.priority
       });
 
@@ -186,25 +174,13 @@ export default function Settings() {
   };
 
   const formatRuleValue = (rule) => {
-    if (rule.rule_type === 'price_range') {
-      try {
-        const range = JSON.parse(rule.rule_value);
-        return `$${range.min || '0'} - $${range.max || '∞'}`;
-      } catch (e) {
-        return rule.rule_value;
-      }
-    }
+    // Always just show the tag value
     return rule.rule_value;
   };
 
   const getRuleIcon = (type) => {
-    switch (type) {
-      case 'tag': return <Tag className="w-4 h-4" />;
-      case 'price_range': return <DollarSign className="w-4 h-4" />;
-      case 'collection': return <Package className="w-4 h-4" />;
-      case 'vendor': return <Store className="w-4 h-4" />;
-      default: return null;
-    }
+    // Always show tag icon
+    return <Tag className="w-4 h-4" />;
   };
 
   if (loading) {
@@ -266,7 +242,7 @@ export default function Settings() {
           <div>
             <h2 className="text-xl font-semibold text-gray-900">Template Assignment Rules</h2>
             <p className="text-gray-500 text-sm mt-1">
-              Automatically assign templates based on product attributes. Lower priority number = higher priority.
+              Automatically assign templates based on product tags. Lower priority number = higher priority.
             </p>
           </div>
           <div className="flex gap-3">
@@ -300,8 +276,7 @@ export default function Settings() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priority</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rule Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rule Value</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product Tag</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Template</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -315,12 +290,11 @@ export default function Settings() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2 text-sm text-gray-700">
-                        {getRuleIcon(rule.rule_type)}
-                        <span className="capitalize">{rule.rule_type.replace('_', ' ')}</span>
+                        <Tag className="w-4 h-4 text-blue-600" />
+                        <span className="font-mono bg-gray-100 px-2 py-1 rounded text-sm">
+                          {formatRuleValue(rule)}
+                        </span>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {formatRuleValue(rule)}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
                       {rule.template_name || 'Unknown'}
@@ -379,48 +353,33 @@ export default function Settings() {
                 </select>
               </div>
 
-              {/* Rule Type */}
+              {/* Rule Type - TAGS ONLY */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Rule Type
                 </label>
-                <select
-                  value={newRule.rule_type}
-                  onChange={(e) => setNewRule({ ...newRule, rule_type: e.target.value })}
-                  className="input w-full"
-                >
-                  <option value="tag">Product Tag</option>
-                  <option value="vendor">Vendor</option>
-                  <option value="price_range">Price Range</option>
-                  <option value="collection">Collection ID</option>
-                </select>
+                <div className="input w-full bg-gray-50 cursor-not-allowed">
+                  Product Tag
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Rules match products by their Shopify tags
+                </p>
               </div>
 
               {/* Rule Value */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Rule Value
+                  Tag Name
                 </label>
                 <input
                   type="text"
                   value={newRule.rule_value}
                   onChange={(e) => setNewRule({ ...newRule, rule_value: e.target.value })}
-                  placeholder={
-                    newRule.rule_type === 'price_range'
-                      ? 'e.g., 10-50'
-                      : newRule.rule_type === 'collection'
-                      ? 'Collection ID'
-                      : newRule.rule_type === 'vendor'
-                      ? 'Vendor name'
-                      : 'Tag name'
-                  }
+                  placeholder="e.g., software, digital, premium"
                   className="input w-full"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  {newRule.rule_type === 'price_range' && 'Format: min-max (e.g., 10-50)'}
-                  {newRule.rule_type === 'tag' && 'Case-insensitive tag match'}
-                  {newRule.rule_type === 'vendor' && 'Exact vendor name (case-insensitive)'}
-                  {newRule.rule_type === 'collection' && 'Shopify collection ID number'}
+                  Products with this tag will use the selected template (case-insensitive)
                 </p>
               </div>
 

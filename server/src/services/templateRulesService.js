@@ -1,9 +1,8 @@
 import db from '../config/database.js';
-import { shopify } from '../config/shopify.js';
 
 /**
  * Template Assignment Rules Service
- * Handles automatic template assignment based on product attributes
+ * Handles automatic template assignment based on product tags
  */
 
 // Get all active rules for a shop, ordered by priority
@@ -108,43 +107,18 @@ export async function deleteRule(ruleId) {
   }
 }
 
-// Check if a product matches a rule
+// Check if a product matches a rule (tags only)
 function matchesRule(product, rule) {
-  const ruleValue = rule.rule_value;
-
-  switch (rule.rule_type) {
-    case 'tag': {
-      // Product tags are stored as comma-separated string
-      const productTags = (product.tags || '').toLowerCase().split(',').map(t => t.trim());
-      const searchTag = ruleValue.toLowerCase().trim();
-      return productTags.includes(searchTag);
-    }
-
-    case 'collection': {
-      // Collection ID is stored in rule_value
-      // Product collections need to be fetched from Shopify (we'll handle this in applyRulesToProduct)
-      return product.collections && product.collections.includes(parseInt(ruleValue));
-    }
-
-    case 'price_range': {
-      // Price range stored as JSON: {"min": 10, "max": 50}
-      const range = JSON.parse(ruleValue);
-      const price = parseFloat(product.price || 0);
-      const min = range.min !== null ? parseFloat(range.min) : 0;
-      const max = range.max !== null ? parseFloat(range.max) : Infinity;
-      return price >= min && price <= max;
-    }
-
-    case 'vendor': {
-      // Exact match (case-insensitive)
-      const productVendor = (product.vendor || '').toLowerCase().trim();
-      const searchVendor = ruleValue.toLowerCase().trim();
-      return productVendor === searchVendor;
-    }
-
-    default:
-      return false;
+  // Only support tag matching
+  if (rule.rule_type !== 'tag') {
+    console.warn(`Unsupported rule type: ${rule.rule_type}`);
+    return false;
   }
+
+  // Product tags are stored as comma-separated string
+  const productTags = (product.tags || '').toLowerCase().split(',').map(t => t.trim());
+  const searchTag = rule.rule_value.toLowerCase().trim();
+  return productTags.includes(searchTag);
 }
 
 // Apply rules to a single product
@@ -181,13 +155,6 @@ export async function applyRulesToProduct(shopId, productId, accessToken, shopDo
     const rules = await getActiveRules(shopId);
     if (rules.length === 0) {
       return null;
-    }
-
-    // For collection rules, we need to fetch product collections from Shopify
-    // NOTE: Collection matching is not fully implemented yet - will add in future update
-    if (rules.some(r => r.rule_type === 'collection')) {
-      console.warn('Collection rules found but not fully supported yet - skipping collection matching');
-      // TODO: Implement collection fetching via Shopify GraphQL API
     }
 
     // Find first matching rule (rules are already ordered by priority)
