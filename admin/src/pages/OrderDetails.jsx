@@ -171,10 +171,9 @@ function OrderDetails() {
                   <p className="font-medium text-gray-900">{order.customer_email}</p>
                   <button
                     onClick={handleEditEmail}
-                    className="p-1 hover:bg-gray-100 rounded transition-colors"
-                    title="Edit email"
+                    className="text-sm text-blue-600 underline hover:text-blue-800 font-medium"
                   >
-                    <Edit2 className="w-4 h-4 text-gray-500 hover:text-blue-600" />
+                    (change)
                   </button>
                 </div>
               ) : (
