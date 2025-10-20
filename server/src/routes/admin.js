@@ -1,4 +1,5 @@
 // server/src/routes/admin.js
+import { sendLicenseEmail } from '../services/emailService.js';
 import express from 'express';
 import db from '../config/database.js';
 import { shopify } from '../config/shopify.js';
