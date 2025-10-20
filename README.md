@@ -20,7 +20,7 @@ A complete digital license distribution system for Shopify stores. Automatically
 
 ---
 
-## ✨ Features
+## ✨ Current Features
 
 ### 🚀 Automatic License Delivery ✅
 - Webhook-driven automation (orders/create)
@@ -35,7 +35,8 @@ A complete digital license distribution system for Shopify stores. Automatically
 - HTML and plain text versions
 - Auto-generate plain text from HTML
 - Product-specific template assignment
-- Set shop default template (⭐)
+- Set shop default template
+- **Automatic template assignment via rules** ⭐ NEW
 - Template variable system: `{{first_name}}`, `{{last_name}}`, `{{order_number}}`, `{{license_keys}}`, `{{product_name}}`
 - Template validation with warnings
 - Click-to-insert variable palette
@@ -46,6 +47,7 @@ A complete digital license distribution system for Shopify stores. Automatically
 - Bulk product selection with checkboxes
 - Bulk template assignment
 - Individual product template selection
+- **Product metadata storage (tags, vendor, price)** ⭐ NEW
 - License inventory tracking per product
 - Pagination (25/50/100/250 per page)
 - Product filtering and sorting
@@ -61,14 +63,26 @@ A complete digital license distribution system for Shopify stores. Automatically
 - Release allocated licenses back to pool
 - Download license lists
 
+### ⚙️ Settings & Automation ✅ NEW
+- **Template Assignment Rules Engine** - Auto-assign templates based on:
+  - Product tags (e.g., "software", "game")
+  - Vendor/manufacturer
+  - Price ranges (e.g., $10-$50)
+  - Collections (ID-based)
+- **Rule Priority System** - Control rule application order
+- **Exclusion Tags** - Bypass rules for specific products
+- **Bulk Rule Application** - Apply rules to all products at once
+- **Active/Inactive Rules** - Toggle rules without deletion
+
 ### 📊 Complete Admin Dashboard ✅
 - Real-time statistics (orders, licenses, products)
 - Shop selector for multi-store support
-- Quick action cards
+- Quick action cards with hover effects
 - Order history with pagination
 - License allocation status indicators
 - Warning indicators for incomplete allocations
 - Detailed order view
+- **Settings page for system configuration** ⭐ NEW
 - Responsive design
 - Modern UI with Tailwind CSS
 
@@ -85,323 +99,37 @@ A complete digital license distribution system for Shopify stores. Automatically
 ---
 
 ## 🏗️ Architecture
-
 ```
 Customer Order (Shopify)
     ↓
 Webhook Handler (Auto-registered on install)
     ↓
 License Allocator
-    ├→ Check Product → Get Assigned Template
+    ├→ Check Product → Apply Template Rules → Get Template
     ├→ Allocate Licenses from Available Pool
     ├→ Send Custom Email (SendGrid)
     ├→ Update Database (mark allocated)
     └→ Check Inventory → Send Alert if Low
 ```
 
-### Database Schema (8 Tables)
+### Database Schema (9 Tables)
 
 **Core Tables:**
-- `shops` - Installed Shopify stores with OAuth tokens
-- `products` - Shopify products linked to license pools and templates
+- `shops` - Installed Shopify stores with OAuth tokens, exclusion tags
+- `products` - Shopify products with tags, vendor, price, template assignment
 - `licenses` - License keys with allocation status
-- `orders` - Order records from Shopify webhooks
+- `orders` - Order records from Shopify
 - `order_items` - Line items with allocation tracking
-
-**Supporting Tables:**
-- `email_logs` - Email delivery audit trail
+- `email_logs` - Audit trail of sent emails
+- `email_templates` - Custom email templates
 - `inventory_alerts` - Low stock notifications
-- `email_templates` - Custom email templates per shop
-
-**Key Relationships:**
-- Products → Licenses (one-to-many)
-- Products → Templates (many-to-one, nullable)
-- Shops → Templates (one default per shop)
-- Orders → Licenses (via order_items)
+- `template_assignment_rules` - **NEW** - Automatic template assignment rules
 
 ---
 
-## 🚀 Deployment (Production)
+## 🎯 Complete Roadmap & Planned Improvements
 
-### Live URLs
-
-**Frontend (Vercel):**
-```
-https://license-manager-lovat.vercel.app
-```
-
-**Backend API (Railway):**
-```
-https://license-manager-production-96dd.up.railway.app
-```
-
-**Database:**
-- Railway MySQL (private network)
-- Connected via mysql.railway.internal
-- No public access required
-
-### Environment Variables
-
-**Backend (Railway):**
-PORT=8080
-NODE_ENV=production
-APP_URL=https://license-manager-production-96dd.up.railway.app
-
-# Database (Railway MySQL - Private Network)
-DB_HOST=mysql.railway.internal
-DB_USER=root
-DB_PASSWORD=[SECURE]
-DB_NAME=railway
-DB_PORT=3306
-
-# Shopify
-SHOPIFY_API_KEY=[KEY]
-SHOPIFY_API_SECRET=[SECRET]
-SHOPIFY_SCOPES=read_products,read_orders,read_customers
-SHOPIFY_REDIRECT_URI=https://license-manager-production-96dd.up.railway.app/auth/callback
-SHOPIFY_WEBHOOK_SECRET=[SECRET]
-
-# SendGrid
-SENDGRID_API_KEY=[KEY]
-FROM_EMAIL=jeremiah@tfswheels.com
-FROM_NAME=TFS License Manager
-
-# Alerts
-ADMIN_EMAIL=jeremiah@tfswheels.com
-LOW_INVENTORY_THRESHOLD=10
-
-**Frontend (Vercel):**
-- Automatically uses production API URL via `import.meta.env.PROD` check
-
-### Deployment Process
-
-**Backend (Railway):**
-1. Connected to GitHub repo
-2. Root directory: `server`
-3. Auto-deploys on push to `main`
-4. Build: `npm install`
-5. Start: `npm start`
-
-**Database (Railway MySQL):**
-1. Managed MySQL instance
-2. Private network connection
-3. Automatic backups
-4. Connected to backend via internal network
-
-**Frontend (Vercel):**
-1. Connected to GitHub repo
-2. Root directory: `admin`
-3. Framework preset: Vite
-4. Build: `npm run build`
-5. Output: `dist`
-6. Auto-deploys on push to `main`
-
----
-
-## 🛠️ Local Development
-
-### Prerequisites
-- Node.js v20+
-- MySQL database
-- Shopify Partner account
-- SendGrid account
-
-### Setup
-
-```bash
-# 1. Clone repository
-git clone https://github.com/tfswheels/license-manager.git
-cd license-manager
-
-# 2. Install dependencies
-cd server && npm install
-cd ../admin && npm install
-
-# 3. Configure environment
-cd ../server
-cp .env.example .env
-# Edit .env with your credentials
-
-# 4. Setup database
-node setup-database.js
-node run-migration.js
-
-# 5. Start development servers
-# Terminal 1 - Backend
-cd server
-npm run dev  # Runs on http://localhost:3001
-
-# Terminal 2 - Frontend
-cd admin
-npm run dev  # Runs on http://localhost:5173
-```
-
-### Testing Webhooks Locally
-
-Use ngrok to expose your local server:
-
-```bash
-ngrok http 3001
-
-# Update Shopify Partner app with ngrok URL
-# Update server/.env APP_URL with ngrok URL
-```
-
----
-
-## 📱 Admin Dashboard Pages
-
-### Dashboard
-- Real-time stats: Total orders, licenses, products
-- Shop selector dropdown
-- Quick action cards
-- Recent activity
-
-### Products
-- List all Shopify products
-- Search bar (name, SKU, ID, variant)
-- Bulk select with checkboxes
-- Template assignment dropdown per product
-- Bulk template assignment
-- License count per product
-- Add/remove products from system
-- Pagination controls
-
-### Licenses
-- Upload via CSV or Excel
-- Drag-and-drop interface
-- Preview before upload
-- View all licenses table
-- Filter: All / Available / Allocated
-- Actions: Delete unallocated, Release allocated
-- Download as CSV
-- Pagination
-
-### Orders
-- Order history table
-- License allocation status badges
-- Warning indicators for incomplete allocations
-- Detailed order view modal
-- Manual license allocation (coming soon)
-- Email delivery status (coming soon)
-- Resend license emails (coming soon)
-
-### Templates
-- Template list with search
-- Create/Edit/Delete templates
-- Set default template (⭐ icon)
-- Product count per template
-- Template editor:
-  - Split-screen layout
-  - HTML and Plain Text tabs
-  - Live preview with sample data
-  - Variable palette (click to insert)
-  - Auto-generate plain text from HTML
-  - Subject line editor
-  - Template validation
-
----
-
-## 📡 API Endpoints
-
-### Authentication
-```
-GET  /auth/install       - Start OAuth flow
-GET  /auth/callback      - OAuth callback with webhook registration
-GET  /auth/status        - Check installation status
-```
-
-### Webhooks
-```
-POST /webhooks/orders/create  - Order creation webhook (auto-registered)
-```
-
-### Admin API
-
-**Shops:**
-```
-GET  /api/admin/shops    - List installed shops
-```
-
-**Products:**
-```
-GET  /api/admin/products              - List products for shop
-POST /api/admin/shops/:id/fetch       - Fetch products from Shopify (GraphQL)
-POST /api/admin/shops/:id/add         - Add selected products
-POST /api/admin/products/:id          - Update product (template assignment)
-POST /api/admin/products/bulk-assign  - Bulk template assignment
-DELETE /api/admin/products/:id        - Remove product
-```
-
-**Licenses:**
-```
-GET  /api/admin/licenses                    - List licenses
-POST /api/admin/products/:id/licenses/bulk  - Upload licenses (CSV/Excel)
-PUT  /api/admin/licenses/:id                - Update license
-DELETE /api/admin/licenses/:id              - Delete license
-```
-
-**Orders:**
-```
-GET  /api/admin/orders         - List orders
-GET  /api/admin/orders/:id     - Get order details
-```
-
-**Templates:**
-```
-GET    /api/admin/templates       - List templates
-GET    /api/admin/templates/:id   - Get template
-POST   /api/admin/templates       - Create template
-PUT    /api/admin/templates/:id   - Update template
-DELETE /api/admin/templates/:id   - Delete template
-POST   /api/admin/templates/:id/default  - Set as default
-```
-
----
-
-## 🔄 Workflows
-
-### Automatic Allocation Flow
-
-1. Customer places order on Shopify
-2. Shopify sends `orders/create` webhook
-3. System receives webhook (signature verified)
-4. For each line item:
-   - Check if product exists in system
-   - Get product's assigned template (or shop default)
-   - Allocate required number of licenses
-   - Mark licenses as allocated
-5. Send email with licenses using template
-6. Log email delivery
-7. Check inventory levels
-8. Send alert if below threshold
-
-### Manual Upload Flow
-
-1. Admin uploads licenses (CSV or Excel)
-2. System validates file format
-3. Preview shown to admin
-4. Admin confirms upload
-5. Licenses added to product pool
-6. Available count updated
-7. Inventory alert cleared if resolved
-
-### Template Assignment Flow
-
-1. Admin creates custom template
-2. Admin assigns template to specific products
-3. Or sets template as shop default
-4. When order comes in:
-   - Check product's template
-   - If null, use shop default
-   - Render template with order variables
-   - Send email
-
----
-
-## 🎯 Roadmap
-
-### ✅ Phase 1: Core System (COMPLETE)
+### ✅ Phase 1: Core System (COMPLETE - October 2025)
 - [x] OAuth installation flow
 - [x] Webhook processing
 - [x] License allocation engine
@@ -412,84 +140,120 @@ POST   /api/admin/templates/:id/default  - Set as default
 - [x] Custom email templates
 - [x] Template editor with live preview
 - [x] Production deployment
+- [x] **Template assignment rules** ⭐
+- [x] **Settings page** ⭐
 
-### 🚧 Phase 2: Enhanced Operations (NEXT - Q4 2025)
-- [ ] **Manual license allocation** - Allocate licenses to orders that failed
-- [ ] **Email delivery tracking** - Show success/failure status on orders page
-- [ ] **Resend license emails** - Re-send same licenses to customer
-- [ ] **Auto-retry failed allocations** - When licenses uploaded, auto-allocate to waiting orders
-- [ ] Template preview emails - Send test emails
-- [ ] Template duplication - Copy existing templates
-- [ ] Rich text template editor - WYSIWYG editor option
-- [ ] Email settings per shop - Custom from addresses
-- [ ] Advanced reporting - Export orders, licenses, analytics
+---
+
+### 🚧 Phase 2: Enhanced Operations (IN PROGRESS - Q4 2025)
+
+#### Order Management & Customer Service
+1. [ ] **Manual License Allocation** 🔥 - Allocate licenses to orders that failed due to insufficient inventory
+2. [ ] **Resend License Email** 🔥 - Re-send licenses to customer with current email address
+3. [ ] **Update Customer Email** 🔥 - Change customer email address on order record
+4. [ ] **Email Delivery Status Tracking** - Show delivery status (✅ Delivered, ⚠️ Pending, ❌ Failed/Bounced) using SendGrid webhooks
+5. [ ] **Auto-retry Failed Allocations** - When licenses uploaded, prompt to auto-allocate to waiting orders
+6. [ ] **Show Order Price** - Display order value on Orders page and Order details
+
+#### Product & License Management
+7. [ ] **Show Product Price** - Display product price on Products page (data already stored)
+8. [ ] **Manual License Send** - Send license directly to customer (name + email), creates free order record
+9. [ ] **License Send Method** - Choose allocation strategy: FIFO (first-in-first-out), LIFO (last-in-first-out), or Random
+10. [ ] **License Uniqueness Enforcement** - Prevent duplicate license allocation if enabled
+11. [ ] **Per-Order License Uniqueness** - Same order won't receive duplicate licenses (when uniqueness enabled)
+12. [ ] **Out-of-Stock Behavior** - Configure what happens when no licenses available:
+    - Don't send email
+    - Replace `{{license_keys}}` with custom placeholder message
+    - Send "Contact merchant" message
+
+#### Template System
+13. [x] **Template Assignment Rules** - Auto-assign templates based on:
+    - [x] Product tags
+    - [x] Price ranges
+    - [x] Vendor
+    - [ ] Collections (framework ready, needs full implementation)
+14. [x] **Template Rule Exclusion Tag** - Add tag to products to exclude from automatic template rules
+15. [x] **Template Rule Re-assignment** - When rules saved, re-assign all products automatically
+16. [ ] **Template Preview Emails** - Send test emails with sample data
+17. [ ] **Template Duplication** - Copy existing templates
+
+#### Settings & Configuration
+18. [x] **Settings Page** 🔥 - Centralized settings management for:
+    - [x] Template assignment rules
+    - [ ] License allocation strategy (infrastructure ready)
+    - [ ] Uniqueness settings
+    - [ ] Out-of-stock behavior
+    - [ ] Email delivery preferences
+19. [ ] **Email Settings Per Shop** - Custom from addresses and sender names
+20. [ ] **Advanced Reporting** - Export orders, licenses, and analytics data
+
+---
 
 ### 🔮 Phase 3: Advanced Features (2026)
-- [ ] License expiration dates - Time-limited licenses
-- [ ] Usage tracking - Track license activation/usage
-- [ ] Customer portal - Self-service license management
-- [ ] License auto-generation - Generate keys automatically
-- [ ] Multi-language support - Localized templates
-- [ ] Custom template rules - By tag, vendor, collection
-- [ ] API for developers - Public API access
-- [ ] Webhook retry logic - Automatic retry on failures
-- [ ] Advanced fraud detection - Suspicious order flagging
-- [ ] Analytics dashboard - Usage metrics, trends
+
+#### License Management
+21. [ ] **License Expiration Dates** - Time-limited licenses with auto-expiry
+22. [ ] **License Usage Tracking** - Track activation and usage statistics
+23. [ ] **License Auto-Generation** - Generate keys automatically using custom algorithms
+
+#### Customer Experience
+24. [ ] **Customer Portal** - Self-service license management for customers
+25. [ ] **Multi-language Support** - Localized templates and UI
+
+#### Developer & Integration
+26. [ ] **Public API** - Developer API for custom integrations
+27. [ ] **Webhook Retry Logic** - Automatic retry for failed webhooks
+28. [ ] **Advanced Fraud Detection** - Suspicious order flagging and prevention
+
+#### Analytics & Insights
+29. [ ] **Analytics Dashboard** - Usage metrics, trends, and business intelligence
+30. [ ] **Rich Text Template Editor** - WYSIWYG editor option for templates
 
 ---
 
-## 📋 Planned Improvements
+## 📊 Feature Priority Matrix
 
-### Priority Improvements (From User Feedback)
-
-#### 1. Manual License Allocation 🔥
-**Problem:** If an order comes in but no licenses are available, the order fails. Currently, admin must manually send licenses to customers.
-
-**Solution:**
-- Add "Manual Allocation" button on orders with failed allocations
-- When admin uploads new licenses, show option to:
-  - Auto-allocate to waiting orders
-  - Or manually select which orders to fulfill
-- Resend email automatically after allocation
-- Update order status to "Fulfilled"
-
-**Implementation:**
-```
-Orders Page → Show "Needs Licenses" badge
-Click order → See "Allocate Licenses" button
-Admin uploads licenses → Prompt: "Allocate to 3 waiting orders?"
-System allocates → Sends emails → Updates status
-```
-
-#### 2. Email Delivery Tracking 📧
-**Problem:** Can't see if email was successfully delivered or bounced.
-
-**Solution:**
-- Add `delivery_status` column to `email_logs` table
-- Integrate SendGrid webhook events (delivered, bounced, etc.)
-- Display status on Orders page:
-  - ✅ Delivered
-  - ⚠️ Pending
-  - ❌ Failed/Bounced
-- Click status to see full delivery log
-
-#### 3. Resend License Email 🔄
-**Problem:** Customer didn't receive email or deleted it.
-
-**Solution:**
-- Add "Resend Email" button on order details
-- Sends same allocated licenses
-- Uses current template assignment (in case template was updated)
-- Logs as separate email entry
-- Shows "Resent" badge with timestamp
+| Priority | Features | Est. Time | Status |
+|----------|----------|-----------|--------|
+| 🔥 **HIGH** | Manual Allocation, Email Updates, Resend Email | 10-15 hours | Next Sprint |
+| 🟡 **MEDIUM** | Delivery Status, Manual Send, Out-of-Stock Behavior, Uniqueness | 20-25 hours | Sprint 2-3 |
+| 🟢 **LOW** | Price Display, Send Method, Template Preview, Reporting | 10-15 hours | Sprint 3-4 |
+| ⚪ **DEFER** | Customer Portal, Auto-Gen, Fraud Detection, Analytics | 100+ hours | Phase 3 |
 
 ---
 
-## 🐛 Known Issues
+## 🗓️ Recommended Implementation Order
 
-**None currently!** 🎉
+### ✅ **Sprint 1 (Week 1) - COMPLETE** 
+1. ✅ Settings Page (infrastructure foundation)
+2. ✅ Template Assignment Rules
+3. ✅ Product metadata storage
 
-The app is stable and production-ready.
+**Completed: ~12 hours**
+
+### **Sprint 2 (Week 2) - Core Customer Service** ⚡
+1. Manual License Allocation
+2. Update Customer Email
+3. Resend License Email
+4. Show Order/Product Prices
+
+**Total: ~12-15 hours**
+
+### **Sprint 3 (Week 3) - Customer Experience** 🎨
+5. Out-of-Stock Behavior
+6. Manual License Send
+7. Template Preview Emails
+8. Email Delivery Status
+
+**Total: ~15-20 hours**
+
+### **Sprint 4 (Week 4) - Advanced Features** 🚀
+9. License Uniqueness Enforcement
+10. License Send Method (FIFO/LIFO/Random)
+11. Email Settings Per Shop
+12. Auto-retry Failed Allocations
+
+**Total: ~18-25 hours**
 
 ---
 
@@ -500,6 +264,7 @@ The app is stable and production-ready.
 | Price | $19.99/mo | $15-159/mo | $15-35/mo |
 | Unlimited Templates | ✅ | ❌ | ❌ |
 | Product-Specific Templates | ✅ | ❌ | ❌ |
+| **Template Assignment Rules** | ✅ ⭐ | ❌ | ❌ |
 | Excel Upload | ✅ | ❌ | ❌ |
 | Live Template Preview | ✅ | ❌ | ❌ |
 | Modern UI | ✅ | ❌ | ⚠️ |
@@ -507,6 +272,7 @@ The app is stable and production-ready.
 | Real-time Stats | ✅ | ⚠️ | ⚠️ |
 | GraphQL Product Fetch | ✅ | ❌ | ❌ |
 | Multi-Shop Support | ✅ | ⚠️ | ⚠️ |
+| License Uniqueness | 🔜 | ❌ | ⚠️ |
 
 ---
 
@@ -517,8 +283,18 @@ The app is stable and production-ready.
 - Licenses can have duplicates (inventory system)
 - Allocated licenses locked to `order_id`
 - Products with NULL `email_template_id` use shop's default template
+- **Template rules evaluated by priority (lower number = higher priority)**
+- **Products store tags, vendor, price for rule matching**
 - Connection pool max: 10 connections
 - Index optimization on frequently queried fields
+
+### Template Assignment Rules
+- **Rule Types**: tag, vendor, price_range, collection
+- **Priority System**: Rules evaluated in order (1-999, lower first)
+- **Exclusion Mechanism**: Products with exclusion tag bypass all rules
+- **Active/Inactive**: Toggle rules without deletion
+- **Bulk Application**: Apply all rules to all products with one click
+- **Automatic Updates**: Can trigger re-assignment when products added
 
 ### Email System
 - Both HTML and plain text versions sent
@@ -526,6 +302,7 @@ The app is stable and production-ready.
 - SendGrid free tier: 100 emails/day
 - Template variables replaced at send time
 - Default template auto-created on shop install
+- **Template selection via rules or manual assignment**
 - Customer name handling: Uses first/last name or defaults to "Customer"
 
 ### Webhooks
@@ -573,46 +350,172 @@ The app is stable and production-ready.
 
 ---
 
-## 👥 Team
+## 🐛 Known Issues
 
-**Developer:** Jeremiah (tfswheels)  
-**GitHub:** https://github.com/tfswheels/license-manager  
-**Contact:** jeremiah@tfswheels.com  
+**None currently!** 🎉
 
 ---
 
-## 📄 License
+## 🛠️ Local Development
 
-Private project - All rights reserved  
-© 2025 TFS Wheels
+### Prerequisites
+- Node.js v20+
+- MySQL database
+- Shopify Partner account
+- SendGrid account
+
+### Setup
+```bash
+# 1. Clone repository
+git clone https://github.com/tfswheels/license-manager.git
+cd license-manager
+
+# 2. Install dependencies
+cd server && npm install
+cd ../admin && npm install
+
+# 3. Configure environment
+cd ../server
+cp .env.example .env
+# Edit .env with your credentials
+
+# 4. Setup database
+node setup-database.js
+node run-migration.js
+
+# 5. Start development servers
+# Terminal 1 - Backend
+cd server
+npm run dev  # Runs on http://localhost:3001
+
+# Terminal 2 - Frontend
+cd admin
+npm run dev  # Runs on http://localhost:5173
+```
+
+### Testing Webhooks Locally
+
+Use ngrok to expose your local server:
+```bash
+ngrok http 3001
+
+# Update Shopify Partner app with ngrok URL
+# Update server/.env APP_URL with ngrok URL
+```
 
 ---
 
-## 🎉 Project Timeline
+## 📡 API Endpoints
 
-- **October 13, 2025** - Project started, backend complete
-- **October 14, 2025** - Frontend complete, production deployment
-- **October 15, 2025** - Database migrated to Railway (private network)
+### Authentication
+```
+GET  /auth/install       - Start OAuth flow
+GET  /auth/callback      - OAuth callback with webhook registration
+GET  /auth/status        - Check installation status
+```
 
-- **Status:** Live and operational! 🚀
+### Webhooks
+```
+POST /webhooks/orders/create  - Order creation webhook (auto-registered)
+```
+
+### Admin API
+
+**Shops:**
+```
+GET  /api/admin/shops    - List installed shops
+```
+
+**Products:**
+```
+GET  /api/admin/products              - List products for shop
+POST /api/admin/shops/:id/fetch       - Fetch products from Shopify
+POST /api/admin/products/add          - Add selected products
+PUT  /api/admin/products/:id/template - Assign template to product
+POST /api/admin/products/bulk-template - Bulk assign templates
+DELETE /api/admin/products/:id        - Remove product from app
+```
+
+**Licenses:**
+```
+GET  /api/admin/products/:id/licenses - Get licenses for product
+POST /api/admin/products/:id/licenses - Upload licenses
+GET  /api/admin/licenses              - List all licenses
+DELETE /api/admin/licenses/:id        - Delete unallocated license
+```
+
+**Orders:**
+```
+GET  /api/admin/orders           - List orders
+GET  /api/admin/orders/:id       - Get order details
+POST /api/admin/orders/:id/allocate - Manual allocation
+```
+
+**Templates:**
+```
+GET  /api/admin/templates        - List templates
+POST /api/admin/templates        - Create template
+GET  /api/admin/templates/:id    - Get template
+PUT  /api/admin/templates/:id    - Update template
+DELETE /api/admin/templates/:id  - Delete template
+PUT  /api/admin/templates/:id/default - Set as default
+```
+
+**Template Rules (NEW):**
+```
+GET  /api/admin/shops/:id/template-rules              - Get all rules
+POST /api/admin/shops/:id/template-rules              - Create rule
+PUT  /api/admin/shops/:id/template-rules/:ruleId      - Update rule
+DELETE /api/admin/shops/:id/template-rules/:ruleId    - Delete rule
+POST /api/admin/shops/:id/template-rules/apply        - Apply all rules
+GET  /api/admin/shops/:id/template-rules/exclusion-tag - Get exclusion tag
+PUT  /api/admin/shops/:id/template-rules/exclusion-tag - Set exclusion tag
+```
+
+**Stats:**
+```
+GET  /api/admin/shops/:id/stats  - Get shop statistics
+```
 
 ---
 
-## 📞 Support
+## 📦 Deployment
 
-For questions or issues:
-- **GitHub Issues:** Create an issue in this repository
-- **Email:** jeremiah@tfswheels.com
+### Backend (Railway)
+1. Create Railway project
+2. Add MySQL plugin
+3. Set environment variables
+4. Deploy from GitHub
+5. Configure domain
+
+### Frontend (Vercel)
+1. Import GitHub repository
+2. Framework preset: Vite
+3. Build: `npm run build`
+4. Output: `dist`
+5. Deploy
+
+### Database Migrations
+
+When deploying new features:
+```bash
+# Run migrations in order
+node run-migration.js
+```
 
 ---
 
-## 🙏 Acknowledgments
+## 🎓 Recent Updates
 
-Built with:
-- [Shopify](https://shopify.dev) - E-commerce platform
-- [SendGrid](https://sendgrid.com) - Email delivery
-- [Railway](https://railway.app) - Backend hosting
-- [Vercel](https://vercel.com) - Frontend hosting
-- [Google Cloud](https://cloud.google.com) - Database hosting
+### October 17, 2025 - Settings & Template Rules
+- ✅ Added Settings page with rule management UI
+- ✅ Implemented template assignment rules engine
+- ✅ Added product metadata storage (tags, vendor, price)
+- ✅ Created rule priority system
+- ✅ Added exclusion tag functionality
+- ✅ Updated product fetching to include metadata
+- ✅ Database schema expanded to 9 tables
 
-**Ready for customers!** 🎯
+---
+
+**Built with ❤️ for digital product sellers who deserve better tools.**

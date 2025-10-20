@@ -8,6 +8,7 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
 // Interceptor for error handling
 api.interceptors.response.use(
   (response) => response,
@@ -44,22 +45,37 @@ export const adminAPI = {
   releaseLicense: (licenseId) => api.post(`/api/admin/licenses/${licenseId}/release`),
 
   // Templates
-getTemplates: (shopId) => api.get('/api/admin/templates', { params: { shopId } }),
-getTemplate: (templateId) => api.get(`/api/admin/templates/${templateId}`),
-createTemplate: (data) => api.post('/api/admin/templates', data),
-updateTemplate: (templateId, data) => api.put(`/api/admin/templates/${templateId}`, data),
-deleteTemplate: (templateId, reassignTemplateId = null) => 
-  api.delete(`/api/admin/templates/${templateId}`, { data: { reassignTemplateId } }),
-setDefaultTemplate: (templateId) => api.post(`/api/admin/templates/${templateId}/set-default`),
-validateTemplate: (emailHtmlTemplate) => 
-  api.post('/api/admin/templates/validate', { emailHtmlTemplate }),
-getTemplateProducts: (templateId) => api.get(`/api/admin/templates/${templateId}/products`),
+  getTemplates: (shopId) => api.get('/api/admin/templates', { params: { shopId } }),
+  getTemplate: (templateId) => api.get(`/api/admin/templates/${templateId}`),
+  createTemplate: (data) => api.post('/api/admin/templates', data),
+  updateTemplate: (templateId, data) => api.put(`/api/admin/templates/${templateId}`, data),
+  deleteTemplate: (templateId, reassignTemplateId = null) => 
+    api.delete(`/api/admin/templates/${templateId}`, { data: { reassignTemplateId } }),
+  setDefaultTemplate: (templateId) => api.post(`/api/admin/templates/${templateId}/set-default`),
+  validateTemplate: (emailHtmlTemplate) => 
+    api.post('/api/admin/templates/validate', { emailHtmlTemplate }),
+  getTemplateProducts: (templateId) => api.get(`/api/admin/templates/${templateId}/products`),
 
-// Product Template Assignment
-assignProductTemplate: (productId, templateId) => 
-  api.put(`/api/admin/products/${productId}/template`, { templateId }),
-bulkAssignTemplate: (productIds, templateId) => 
-  api.post('/api/admin/products/bulk-assign-template', { productIds, templateId }),
+  // Product Template Assignment
+  assignProductTemplate: (productId, templateId) => 
+    api.put(`/api/admin/products/${productId}/template`, { templateId }),
+  bulkAssignTemplate: (productIds, templateId) => 
+    api.post('/api/admin/products/bulk-assign-template', { productIds, templateId }),
+  
+  // Template Assignment Rules
+  getTemplateRules: (shopId) => api.get(`/api/admin/shops/${shopId}/template-rules`),
+  createTemplateRule: (shopId, ruleData) => 
+    api.post(`/api/admin/shops/${shopId}/template-rules`, ruleData),
+  updateTemplateRule: (shopId, ruleId, updates) => 
+    api.put(`/api/admin/shops/${shopId}/template-rules/${ruleId}`, updates),
+  deleteTemplateRule: (shopId, ruleId) => 
+    api.delete(`/api/admin/shops/${shopId}/template-rules/${ruleId}`),
+  applyTemplateRules: (shopId) => 
+    api.post(`/api/admin/shops/${shopId}/template-rules/apply`),
+  getExclusionTag: (shopId) => 
+    api.get(`/api/admin/shops/${shopId}/template-rules/exclusion-tag`),
+  setExclusionTag: (shopId, tag) => 
+    api.put(`/api/admin/shops/${shopId}/template-rules/exclusion-tag`, { tag }),
   
   // Orders
   getOrders: (shopId = null, limit = 100) => 

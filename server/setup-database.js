@@ -1,71 +1,90 @@
-// server/setup-database.js
-import mysql from 'mysql2/promise';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import fs from 'fs';
-import dotenv from 'dotenv';
+import db from './src/config/database.js';
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-async function setupDatabase() {
-  let connection;
-  
+async function runMigration() {
+  console.log('🚀 Running migration: 002_template_assignment_rules.sql\n');
+
   try {
-    console.log('🔌 Connecting to MySQL server...');
-    
-    // Connect without database specified first
-    connection = await mysql.createConnection({
-      host: process.env.DB_HOST,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      port: parseInt(process.env.DB_PORT || '3306')
-    });
+    // Read migration file
+    const migrationPath = join(__dirname, 'migrations', '002_template_assignment_rules.sql');
+    const sql = fs.readFileSync(migrationPath, 'utf8');
 
-    console.log('✅ Connected to MySQL server');
-
-    // Create database if it doesn't exist
-    console.log('📦 Creating database if not exists...');
-    await connection.query(
-      `CREATE DATABASE IF NOT EXISTS ${process.env.DB_NAME} 
-       CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
-    );
-    console.log(`✅ Database '${process.env.DB_NAME}' ready`);
-
-    // Switch to the database
-    await connection.query(`USE ${process.env.DB_NAME}`);
-
-    // Read and execute schema file
-    console.log('📋 Running database schema...');
-    const schema = fs.readFileSync('./migrations/001_initial_schema.sql', 'utf8');
-    
-    // Split by semicolon and execute each statement
-    const statements = schema
+    // Split by semicolon and filter empty statements
+    const statements = sql
       .split(';')
       .map(s => s.trim())
-      .filter(s => s.length > 0);
+      .filter(s => s.length > 0 && !s.startsWith('--') && !s.startsWith('COMMENT'));
 
-    for (const statement of statements) {
-      await connection.query(statement);
+    console.log(`📝 Found ${statements.length} SQL statements to execute\n`);
+
+    // Execute each statement
+    for (let i = 0; i < statements.length; i++) {
+      const statement = statements[i];
+      console.log(`[${i + 1}/${statements.length}] Executing...`);
+      
+      try {
+        await db.execute(statement);
+        console.log(`✅ Success\n`);
+      } catch (error) {
+        // Ignore "Duplicate column" errors (migration already run)
+        if (error.code === 'ER_DUP_FIELDNAME') {
+          console.log(`⚠️  Column already exists, skipping\n`);
+        } else {
+          throw error;
+        }
+      }
     }
 
-    console.log('✅ Database schema created successfully');
+    console.log('✨ Migration completed successfully!');
+    console.log('\n📊 Verifying tables...');
 
-    // Show tables
-    const [tables] = await connection.query('SHOW TABLES');
-    console.log('\n📊 Created tables:');
-    tables.forEach(table => {
-      console.log(`  - ${Object.values(table)[0]}`);
-    });
+    // Verify the new table exists
+    const [tables] = await db.execute(`
+      SELECT TABLE_NAME 
+      FROM information_schema.TABLES 
+      WHERE TABLE_SCHEMA = DATABASE() 
+      AND TABLE_NAME = 'template_assignment_rules'
+    `);
 
-    console.log('\n🎉 Database setup complete!');
+    if (tables.length > 0) {
+      console.log('✅ template_assignment_rules table created');
+
+      // Check columns
+      const [columns] = await db.execute(`
+        SELECT COLUMN_NAME 
+        FROM information_schema.COLUMNS 
+        WHERE TABLE_SCHEMA = DATABASE() 
+        AND TABLE_NAME = 'template_assignment_rules'
+      `);
+      console.log(`   Columns: ${columns.map(c => c.COLUMN_NAME).join(', ')}`);
+    }
+
+    // Verify shops table updates
+    const [shopColumns] = await db.execute(`
+      SELECT COLUMN_NAME 
+      FROM information_schema.COLUMNS 
+      WHERE TABLE_SCHEMA = DATABASE() 
+      AND TABLE_NAME = 'shops'
+      AND COLUMN_NAME IN ('template_rule_exclusion_tag', 'last_rule_application')
+    `);
+
+    if (shopColumns.length === 2) {
+      console.log('✅ shops table updated with new columns');
+    }
+
+    console.log('\n🎉 All done!\n');
+    process.exit(0);
 
   } catch (error) {
-    console.error('❌ Database setup error:', error.message);
-    console.error('Full error:', error);
+    console.error('\n❌ Migration failed:', error.message);
+    console.error(error);
     process.exit(1);
-  } finally {
-    if (connection) {
-      await connection.end();
-    }
   }
 }
 
-setupDatabase();
+runMigration();

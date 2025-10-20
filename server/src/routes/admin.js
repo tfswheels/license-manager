@@ -30,13 +30,12 @@ router.get('/shops', async (req, res) => {
   }
 });
 
-// Fetch products from Shopify using GraphQL with cursor-based pagination
+// Fetch products from Shopify - UPDATED to include tags and price
 router.get('/shops/:shopId/shopify-products', async (req, res) => {
   try {
     const { shopId } = req.params;
-    const { cursor } = req.query; // Optional cursor for pagination
+    const { cursor } = req.query;
 
-    // Get shop details
     const [shops] = await db.execute(
       'SELECT shop_domain, access_token FROM shops WHERE id = ?',
       [shopId]
@@ -48,7 +47,7 @@ router.get('/shops/:shopId/shopify-products', async (req, res) => {
 
     const { shop_domain, access_token } = shops[0];
 
-    // GraphQL query for fetching ONE PAGE of products
+    // UPDATED: Added tags and priceRangeV2 to query
     const query = `
       query getProducts($first: Int!, $after: String) {
         products(first: $first, after: $after) {
@@ -64,6 +63,12 @@ router.get('/shops/:shopId/shopify-products', async (req, res) => {
               handle
               status
               vendor
+              tags
+              priceRangeV2 {
+                minVariantPrice {
+                  amount
+                }
+              }
               images(first: 1) {
                 edges {
                   node {
@@ -87,7 +92,7 @@ router.get('/shops/:shopId/shopify-products', async (req, res) => {
     `;
 
     const variables = {
-      first: 250, // Fetch 250 products per request
+      first: 250,
       after: cursor || null
     };
 
@@ -114,7 +119,7 @@ router.get('/shops/:shopId/shopify-products', async (req, res) => {
     const productsData = result.data.products;
     const edges = productsData.edges;
 
-    // Transform products
+    // UPDATED: Include tags and price in response
     const products = edges.map(edge => {
       const node = edge.node;
       return {
@@ -123,6 +128,8 @@ router.get('/shops/:shopId/shopify-products', async (req, res) => {
         handle: node.handle,
         status: node.status,
         vendor: node.vendor,
+        tags: node.tags, // Array of tags
+        price: parseFloat(node.priceRangeV2?.minVariantPrice?.amount || 0),
         image: node.images.edges[0]?.node?.url || null,
         variants: node.variants.edges.map(v => ({
           id: v.node.legacyResourceId,
@@ -133,7 +140,6 @@ router.get('/shops/:shopId/shopify-products', async (req, res) => {
 
     console.log(`[Product Fetch] Returned ${products.length} products (cursor: ${cursor || 'initial'})`);
 
-    // Return one page with pagination info
     res.json({ 
       products,
       hasMore: productsData.pageInfo.hasNextPage,
@@ -229,7 +235,6 @@ router.post('/shops/:shopId/add-products', async (req, res) => {
       return res.status(400).json({ error: 'No products selected' });
     }
 
-    // Get shop details
     const [shops] = await db.execute(
       'SELECT shop_domain, access_token FROM shops WHERE id = ?',
       [shopId]
@@ -241,7 +246,7 @@ router.post('/shops/:shopId/add-products', async (req, res) => {
 
     const { shop_domain, access_token } = shops[0];
 
-    // Use GraphQL nodes query to fetch selected products
+    // UPDATED: Fetch tags, vendor, and price with GraphQL
     const query = `
       query getProductDetails($ids: [ID!]!) {
         nodes(ids: $ids) {
@@ -250,12 +255,18 @@ router.post('/shops/:shopId/add-products', async (req, res) => {
             legacyResourceId
             title
             handle
+            vendor
+            tags
+            priceRangeV2 {
+              minVariantPrice {
+                amount
+              }
+            }
           }
         }
       }
     `;
 
-    // Convert legacy IDs to global IDs
     const globalIds = productIds.map(id => `gid://shopify/Product/${id}`);
 
     const response = await fetch(`https://${shop_domain}/admin/api/2024-01/graphql.json`, {
@@ -286,13 +297,29 @@ router.post('/shops/:shopId/add-products', async (req, res) => {
       if (!product) continue;
 
       try {
+        // UPDATED: Save tags (as comma-separated string), vendor, and price
+        const tagsString = Array.isArray(product.tags) ? product.tags.join(',') : '';
+        const price = parseFloat(product.priceRangeV2?.minVariantPrice?.amount || 0);
+        
         await db.execute(
-          `INSERT INTO products (shop_id, shopify_product_id, product_name, product_handle)
-           VALUES (?, ?, ?, ?)
+          `INSERT INTO products 
+           (shop_id, shopify_product_id, product_name, product_handle, tags, vendor, price)
+           VALUES (?, ?, ?, ?, ?, ?, ?)
            ON DUPLICATE KEY UPDATE 
            product_name = VALUES(product_name),
-           product_handle = VALUES(product_handle)`,
-          [shopId, product.legacyResourceId, product.title, product.handle]
+           product_handle = VALUES(product_handle),
+           tags = VALUES(tags),
+           vendor = VALUES(vendor),
+           price = VALUES(price)`,
+          [
+            shopId, 
+            product.legacyResourceId, 
+            product.title, 
+            product.handle,
+            tagsString,
+            product.vendor || '',
+            price
+          ]
         );
 
         addedCount++;
@@ -312,6 +339,7 @@ router.post('/shops/:shopId/add-products', async (req, res) => {
     res.status(500).json({ error: 'Failed to add products' });
   }
 });
+
 
 // Sync products from Shopify (legacy endpoint - kept for backwards compatibility)
 router.post('/shops/:shopId/sync-products', async (req, res) => {
