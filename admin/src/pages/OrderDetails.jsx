@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mail, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Mail, AlertCircle, CheckCircle, RefreshCw, Edit2, X, Send } from 'lucide-react';
 import { adminAPI } from '../utils/api';
 
 function OrderDetails() {
@@ -10,6 +10,11 @@ function OrderDetails() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [allocating, setAllocating] = useState(false);
+  
+  // Email editing state
+  const [isEditingEmail, setIsEditingEmail] = useState(false);
+  const [editedEmail, setEditedEmail] = useState('');
+  const [resending, setResending] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -21,6 +26,7 @@ function OrderDetails() {
       const response = await adminAPI.getOrderDetails(orderId);
       setOrder(response.data.order);
       setItems(response.data.items);
+      setEditedEmail(response.data.order.customer_email);
     } catch (error) {
       console.error('Failed to load order details:', error);
     } finally {
@@ -41,6 +47,49 @@ function OrderDetails() {
       alert(error.response?.data?.error || 'Failed to allocate licenses');
     } finally {
       setAllocating(false);
+    }
+  };
+
+  const handleEditEmail = () => {
+    setIsEditingEmail(true);
+    setEditedEmail(order.customer_email);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingEmail(false);
+    setEditedEmail(order.customer_email);
+  };
+
+  const handleResendEmail = async () => {
+    const emailChanged = editedEmail !== order.customer_email;
+    
+    if (emailChanged && !editedEmail.includes('@')) {
+      alert('Please enter a valid email address');
+      return;
+    }
+
+    const action = emailChanged ? 'update email and resend' : 'resend';
+    if (!confirm(`Are you sure you want to ${action} the license email?`)) return;
+
+    try {
+      setResending(true);
+
+      // Update email if changed
+      if (emailChanged) {
+        await adminAPI.updateOrderEmail(orderId, editedEmail);
+      }
+
+      // Resend email
+      await adminAPI.resendOrderEmail(orderId);
+
+      alert('Email sent successfully!');
+      setIsEditingEmail(false);
+      await loadData();
+    } catch (error) {
+      console.error('Resend failed:', error);
+      alert(error.response?.data?.error || 'Failed to send email');
+    } finally {
+      setResending(false);
     }
   };
 
@@ -112,10 +161,54 @@ function OrderDetails() {
                 {order.customer_first_name} {order.customer_last_name}
               </p>
             </div>
+            
+            {/* Email with Edit Functionality */}
             <div>
-              <p className="text-sm text-gray-600">Email</p>
-              <p className="font-medium text-gray-900">{order.customer_email}</p>
+              <p className="text-sm text-gray-600 mb-1">Email</p>
+              
+              {!isEditingEmail ? (
+                <div className="flex items-center gap-2">
+                  <p className="font-medium text-gray-900">{order.customer_email}</p>
+                  <button
+                    onClick={handleEditEmail}
+                    className="p-1 hover:bg-gray-100 rounded transition-colors"
+                    title="Edit email"
+                  >
+                    <Edit2 className="w-4 h-4 text-gray-500 hover:text-blue-600" />
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <input
+                    type="email"
+                    value={editedEmail}
+                    onChange={(e) => setEditedEmail(e.target.value)}
+                    className="input w-full"
+                    placeholder="customer@example.com"
+                    autoFocus
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleResendEmail}
+                      disabled={resending}
+                      className="btn-primary flex-1 flex items-center justify-center gap-2"
+                    >
+                      <Send className={`w-4 h-4 ${resending ? 'animate-pulse' : ''}`} />
+                      {resending ? 'Sending...' : 'Resend Email'}
+                    </button>
+                    <button
+                      onClick={handleCancelEdit}
+                      disabled={resending}
+                      className="btn-secondary flex items-center gap-2"
+                    >
+                      <X className="w-4 h-4" />
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
+
             <div>
               <p className="text-sm text-gray-600">Order Date</p>
               <p className="font-medium text-gray-900">

@@ -1066,4 +1066,110 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+// Update order email address
+router.put('/orders/:orderId/email', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { email } = req.body;
+
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ error: 'Valid email address required' });
+    }
+
+    // Update the order email
+    await db.execute(
+      'UPDATE orders SET customer_email = ?, updated_at = NOW() WHERE id = ?',
+      [email, orderId]
+    );
+
+    res.json({ success: true, message: 'Email updated successfully' });
+
+  } catch (error) {
+    console.error('Error updating order email:', error);
+    res.status(500).json({ error: 'Failed to update email' });
+  }
+});
+
+// Resend license email to customer
+router.post('/orders/:orderId/resend', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    // Get order details
+    const [orders] = await db.execute(
+      `SELECT o.*, s.shop_domain 
+       FROM orders o 
+       JOIN shops s ON o.shop_id = s.id 
+       WHERE o.id = ?`,
+      [orderId]
+    );
+
+    if (orders.length === 0) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const order = orders[0];
+
+    // Get order items with licenses
+    const [orderItems] = await db.execute(
+      `SELECT oi.*, p.product_name, p.id as product_id
+       FROM order_items oi
+       JOIN products p ON oi.product_id = p.id
+       WHERE oi.order_id = ? AND oi.licenses_allocated > 0`,
+      [orderId]
+    );
+
+    if (orderItems.length === 0) {
+      return res.status(400).json({ 
+        error: 'No licenses allocated for this order' 
+      });
+    }
+
+    // Get all allocated licenses for this order
+    for (const item of orderItems) {
+      const [licenses] = await db.execute(
+        `SELECT license_key FROM licenses 
+         WHERE order_id = ? AND product_id = ?`,
+        [orderId, item.product_id]
+      );
+
+      if (licenses.length > 0) {
+        // Send email with allocated licenses
+        await sendLicenseEmail({
+          email: order.customer_email,
+          firstName: order.customer_first_name || 'Customer',
+          lastName: order.customer_last_name || '',
+          orderNumber: order.order_number,
+          productName: item.product_name,
+          productId: item.product_id,
+          licenses: licenses.map(l => l.license_key)
+        });
+
+        // Log the resend
+        await db.execute(
+          `INSERT INTO email_logs (order_id, order_item_id, customer_email, 
+            licenses_sent, email_status)
+           VALUES (?, ?, ?, ?, ?)`,
+          [
+            orderId, 
+            item.id, 
+            order.customer_email, 
+            JSON.stringify(licenses.map(l => l.license_key)), 
+            'resent'
+          ]
+        );
+      }
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'License email resent successfully' 
+    });
+
+  } catch (error) {
+    console.error('Error resending email:', error);
+    res.status(500).json({ error: 'Failed to resend email' });
+  }
+});
+
 export default router;

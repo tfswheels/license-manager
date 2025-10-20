@@ -82,6 +82,10 @@ export const adminAPI = {
     api.get('/api/admin/orders', { params: { shopId, limit } }),
   getOrderDetails: (orderId) => api.get(`/api/admin/orders/${orderId}`),
   manualAllocate: (orderId) => api.post(`/api/admin/orders/${orderId}/allocate`),
+  updateOrderEmail: (orderId, newEmail) => 
+    api.put(`/api/admin/orders/${orderId}/email`, { email: newEmail }),
+  resendOrderEmail: (orderId) => 
+    api.post(`/api/admin/orders/${orderId}/resend`),
   
   // Stats
   getStats: (shopId = null) => api.get('/api/admin/stats', { params: { shopId } }),
