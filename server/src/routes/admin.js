@@ -997,10 +997,16 @@ router.get('/orders/:orderId', async (req, res) => {
     }
 
     const [orderItems] = await db.execute(
-      `SELECT oi.*, p.product_name, p.shopify_product_id
-       FROM order_items oi
-       JOIN products p ON oi.product_id = p.id
-       WHERE oi.order_id = ?`,
+      `SELECT oi.*, p.product_name, p.shopify_product_id,
+        el.delivery_status, el.delivery_updated_at
+      FROM order_items oi
+      JOIN products p ON oi.product_id = p.id
+      LEFT JOIN email_logs el ON el.order_item_id = oi.id 
+        AND el.id = (
+          SELECT MAX(id) FROM email_logs 
+          WHERE order_item_id = oi.id
+        )
+      WHERE oi.order_id = ?`,
       [orderId]
     );
 
