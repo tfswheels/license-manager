@@ -22,18 +22,16 @@ app.use(cors({
   credentials: true
 }));
 
-// Webhook route needs raw body
-app.use('/webhooks', express.raw({ type: 'application/json' }), webhookRoutes);
-
-// JSON parsing for all other routes
+// JSON parsing FIRST (before any routes)
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// SendGrid webhook (uses parsed JSON body)
-app.use('/webhooks/sendgrid', sendgridWebhookRoutes);
-
+// Shopify webhook needs raw body for HMAC verification (specific route)
+app.use('/webhooks/orders', express.raw({ type: 'application/json' }));
 
 // Routes
+app.use('/webhooks/orders', webhookRoutes);  // Shopify webhooks
+app.use('/webhooks/sendgrid', sendgridWebhookRoutes);  // SendGrid webhooks
 app.use('/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin', templateRulesRoutes);

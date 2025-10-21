@@ -28,7 +28,7 @@ function verifyWebhook(req, res, next) {
 }
 
 // Order creation webhook
-router.post('/orders/create', verifyWebhook, async (req, res) => {
+router.post('/create', async (req, res) => {
   try {
     const orderData = req.shopifyData;
     const shop = req.get('X-Shopify-Shop-Domain');
