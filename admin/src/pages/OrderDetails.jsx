@@ -241,7 +241,7 @@ function OrderDetails() {
 
       {/* Order Items */}
       <div className="card">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Order Items</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Ordered Items</h2>
         <div className="space-y-6">
           {items.map((item) => {
             const needsLicenses = item.licenses_allocated < item.quantity;
