@@ -23,14 +23,15 @@ app.use(cors({
 }));
 
 // Webhook route needs raw body
-app.use('/webhooks/sendgrid', express.raw({ type: 'application/json' }), sendgridWebhookRoutes);
 app.use('/webhooks', express.raw({ type: 'application/json' }), webhookRoutes);
-
-
 
 // JSON parsing for all other routes
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// SendGrid webhook (uses parsed JSON body)
+app.use('/webhooks/sendgrid', sendgridWebhookRoutes);
+
 
 // Routes
 app.use('/auth', authRoutes);

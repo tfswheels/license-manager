@@ -44,7 +44,7 @@ function verifySendGridSignature(req, res, next) {
 }
 
 // SendGrid event webhook
-router.post('/events', express.json(), async (req, res) => {
+router.post('/events', async (req, res) => {
   try {
     const events = req.body;
 
