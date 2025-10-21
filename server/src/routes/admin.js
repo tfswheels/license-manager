@@ -726,26 +726,36 @@ router.get('/templates/:id/products', async (req, res) => {
 router.get('/products', async (req, res) => {
   try {
     const { shopId } = req.query;
-    
+
     let query = `
       SELECT p.*, s.shop_domain,
         COUNT(l.id) as total_licenses,
-        SUM(CASE WHEN l.allocated = FALSE THEN 1 ELSE 0 END) as available_licenses
+        SUM(CASE WHEN l.allocated = FALSE THEN 1 ELSE 0 END) as available_licenses,
+        SUM(CASE WHEN l.allocated = TRUE THEN 1 ELSE 0 END) as allocated_licenses
       FROM products p
       JOIN shops s ON p.shop_id = s.id
       LEFT JOIN licenses l ON p.id = l.product_id
     `;
-    
+
     const params = [];
     if (shopId) {
       query += ' WHERE p.shop_id = ?';
       params.push(shopId);
     }
-    
-    query += ' GROUP BY p.id ORDER BY p.created_at DESC';
+
+    query += ' GROUP BY p.id ORDER BY p.product_name';
 
     const [products] = await db.execute(query, params);
-    res.json(products);
+    
+    // Convert null counts to 0
+    const formattedProducts = products.map(p => ({
+      ...p,
+      total_licenses: p.total_licenses || 0,
+      available_licenses: p.available_licenses || 0,
+      allocated_licenses: p.allocated_licenses || 0
+    }));
+    
+    res.json(formattedProducts);
 
   } catch (error) {
     console.error('Error fetching products:', error);
@@ -1129,6 +1139,163 @@ router.post('/orders/:orderId/resend', async (req, res) => {
   } catch (error) {
     console.error('Error resending email:', error);
     res.status(500).json({ error: 'Failed to resend email' });
+  }
+});
+
+// ==========================================
+// MANUAL ORDERS
+// ==========================================
+
+// Manual license send (free orders)
+router.post('/orders/manual-send', async (req, res) => {
+  const connection = await db.getConnection();
+  
+  try {
+    const { email, productId, quantity, firstName, lastName } = req.body;
+
+    // Validate inputs
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ error: 'Valid email address required' });
+    }
+
+    if (!productId || !quantity || quantity < 1) {
+      return res.status(400).json({ error: 'Product ID and quantity required' });
+    }
+
+    await connection.beginTransaction();
+
+    // Get product details and verify it exists
+    const [products] = await connection.execute(
+      'SELECT p.*, s.id as shop_id FROM products p JOIN shops s ON p.shop_id = s.id WHERE p.id = ?',
+      [productId]
+    );
+
+    if (products.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    const product = products[0];
+
+    // Check if enough licenses are available
+    const [licenseCount] = await connection.execute(
+      'SELECT COUNT(*) as available FROM licenses WHERE product_id = ? AND allocated = FALSE',
+      [productId]
+    );
+
+    if (licenseCount[0].available < quantity) {
+      await connection.rollback();
+      return res.status(400).json({ 
+        error: `Not enough licenses available. Only ${licenseCount[0].available} available, ${quantity} requested.` 
+      });
+    }
+
+    // Generate next FREE order number
+    const [lastFreeOrder] = await connection.execute(
+      `SELECT shopify_order_id FROM orders 
+       WHERE order_type = 'manual' AND shopify_order_id LIKE 'FREE-%'
+       ORDER BY id DESC LIMIT 1`
+    );
+
+    let nextFreeNumber = 1;
+    if (lastFreeOrder.length > 0) {
+      const lastNumber = parseInt(lastFreeOrder[0].shopify_order_id.replace('FREE-', ''));
+      nextFreeNumber = lastNumber + 1;
+    }
+
+    const freeOrderId = `FREE-${String(nextFreeNumber).padStart(4, '0')}`;
+
+    // Create manual order
+    const [orderResult] = await connection.execute(
+      `INSERT INTO orders 
+       (shop_id, shopify_order_id, order_number, customer_email, customer_first_name, 
+        customer_last_name, order_status, order_type)
+       VALUES (?, ?, ?, ?, ?, ?, 'paid', 'manual')`,
+      [
+        product.shop_id,
+        freeOrderId,
+        freeOrderId,
+        email,
+        firstName || '',
+        lastName || ''
+      ]
+    );
+
+    const orderId = orderResult.insertId;
+
+    // Create order item
+    const [orderItemResult] = await connection.execute(
+      `INSERT INTO order_items (order_id, product_id, quantity)
+       VALUES (?, ?, ?)`,
+      [orderId, productId, quantity]
+    );
+
+    const orderItemId = orderItemResult.insertId;
+
+    // Allocate licenses
+    const [availableLicenses] = await connection.execute(
+      `SELECT id, license_key FROM licenses 
+       WHERE product_id = ? AND allocated = FALSE 
+       LIMIT ?`,
+      [productId, quantity]
+    );
+
+    const licenseIds = availableLicenses.map(l => l.id);
+    const placeholders = licenseIds.map(() => '?').join(',');
+
+    await connection.execute(
+      `UPDATE licenses 
+       SET allocated = TRUE, order_id = ?, allocated_at = NOW() 
+       WHERE id IN (${placeholders})`,
+      [orderId, ...licenseIds]
+    );
+
+    await connection.execute(
+      `UPDATE order_items SET licenses_allocated = ? WHERE id = ?`,
+      [availableLicenses.length, orderItemId]
+    );
+
+    // Send email
+    await sendLicenseEmail({
+      email: email,
+      firstName: firstName || 'Customer',
+      lastName: lastName || '',
+      orderNumber: freeOrderId,
+      productName: product.product_name,
+      productId: productId,
+      licenses: availableLicenses.map(l => l.license_key)
+    });
+
+    // Log email
+    await connection.execute(
+      `INSERT INTO email_logs (order_id, order_item_id, customer_email, 
+        licenses_sent, email_status, delivery_status)
+       VALUES (?, ?, ?, ?, 'sent', 'pending')`,
+      [orderId, orderItemId, email, JSON.stringify(availableLicenses.map(l => l.license_key))]
+    );
+
+    await connection.execute(
+      `UPDATE order_items SET email_sent = TRUE, email_sent_at = NOW() WHERE id = ?`,
+      [orderItemId]
+    );
+
+    await connection.commit();
+
+    console.log(`✅ Manual order ${freeOrderId} created and sent to ${email}`);
+
+    res.json({ 
+      success: true, 
+      orderId: orderId,
+      orderNumber: freeOrderId,
+      message: `License sent successfully to ${email}` 
+    });
+
+  } catch (error) {
+    await connection.rollback();
+    console.error('Manual send error:', error);
+    res.status(500).json({ error: 'Failed to send license' });
+  } finally {
+    connection.release();
   }
 });
 

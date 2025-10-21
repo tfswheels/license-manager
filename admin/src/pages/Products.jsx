@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Upload, Package, AlertTriangle, Trash2, CheckSquare, Square, ChevronLeft, ChevronRight, Mail } from 'lucide-react';
+import { Plus, Upload, Send, Package, AlertTriangle, Trash2, CheckSquare, Square, ChevronLeft, ChevronRight, Mail } from 'lucide-react';
 import { adminAPI } from '../utils/api';
 import ProductSelector from '../components/ProductSelector';
+import ManualSendModal from '../components/ManualSendModal';
 
 function Products() {
   const navigate = useNavigate();
@@ -15,6 +16,8 @@ function Products() {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [bulkTemplateModal, setBulkTemplateModal] = useState(false);
   const [bulkTemplateId, setBulkTemplateId] = useState('');
+  const [showManualSend, setShowManualSend] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
   // Pagination & Bulk Selection
   const [currentPage, setCurrentPage] = useState(1);
@@ -101,6 +104,16 @@ function Products() {
       alert('Failed to assign template');
     }
   };
+
+  const handleManualSend = (product) => {
+    setSelectedProduct(product);
+    setShowManualSend(true);
+};
+
+  const handleManualSendSuccess = (data) => {
+    // Refresh products to update available license count
+    loadData();
+};
 
   // Handle bulk template assignment
   const handleBulkTemplateAssign = () => {
@@ -202,6 +215,8 @@ function Products() {
     setItemsPerPage(newItemsPerPage);
     setCurrentPage(1);
   };
+
+
 
   const allCurrentPageSelected = currentPageProducts.length > 0 && 
     currentPageProducts.every(p => selectedProducts.has(p.id));
@@ -381,23 +396,36 @@ function Products() {
                         </div>
                       </td>
                       <td className="py-4 px-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => navigate(`/products/${product.id}/licenses`)}
-                            className="btn-secondary text-sm"
-                          >
-                            <Upload className="w-4 h-4 inline mr-1" />
-                            Manage Licenses
-                          </button>
-                          <button
-                            onClick={() => handleDeleteClick(product)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Delete product from app"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
+                      <div className="flex items-center justify-end gap-2">
+                        {/* NEW: Send License Button */}
+                        <button
+                          onClick={() => handleManualSend(product)}
+                          className="btn-secondary text-sm"
+                          title="Send license to customer"
+                        >
+                          <Send className="w-4 h-4 inline mr-1" />
+                          Send
+                        </button>
+
+                        {/* Existing: Manage Licenses Button */}
+                        <button
+                          onClick={() => navigate(`/products/${product.id}/licenses`)}
+                          className="btn-secondary text-sm"
+                        >
+                          <Upload className="w-4 h-4 inline mr-1" />
+                          Manage Licenses
+                        </button>
+
+                        {/* Existing: Delete Button */}
+                        <button
+                          onClick={() => handleDeleteClick(product)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete product from app"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
                     </tr>
                   );
                 })}

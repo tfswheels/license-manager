@@ -86,6 +86,8 @@ export const adminAPI = {
     api.put(`/api/admin/orders/${orderId}/email`, { email: newEmail }),
   resendOrderEmail: (orderId) => 
     api.post(`/api/admin/orders/${orderId}/resend`),
+  manualSendLicense: (data) => 
+    api.post('/api/admin/orders/manual-send', data),
   
   // Stats
   getStats: (shopId = null) => api.get('/api/admin/stats', { params: { shopId } }),

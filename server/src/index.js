@@ -5,6 +5,7 @@ import authRoutes from './routes/auth.js';
 import webhookRoutes from './routes/webhooks.js';
 import adminRoutes from './routes/admin.js';
 import templateRulesRoutes from './routes/templateRules.js';
+import sendgridWebhookRoutes from './routes/sendgridWebhook.js';
 import './config/database.js';
 
 dotenv.config();
@@ -22,7 +23,10 @@ app.use(cors({
 }));
 
 // Webhook route needs raw body
+app.use('/webhooks/sendgrid', express.raw({ type: 'application/json' }), sendgridWebhookRoutes);
 app.use('/webhooks', express.raw({ type: 'application/json' }), webhookRoutes);
+
+
 
 // JSON parsing for all other routes
 app.use(express.json());
