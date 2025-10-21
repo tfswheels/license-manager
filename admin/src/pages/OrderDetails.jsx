@@ -133,9 +133,6 @@ function OrderDetails() {
           </button>
         )}
       </div>
-      <div className="bg-red-500 text-white p-4">
-        TEST: If you see this, the file is updating correctly
-      </div>
 
       {/* Status Alert */}
       {hasIssues && (
@@ -174,9 +171,10 @@ function OrderDetails() {
                   <p className="font-medium text-gray-900">{order.customer_email}</p>
                   <button
                     onClick={handleEditEmail}
-                    className="text-sm text-blue-600 underline hover:text-blue-800 font-medium"
+                    className="p-1 hover:bg-gray-100 rounded transition-colors"
+                    title="Edit email"
                   >
-                    (change)
+                    <Edit2 className="w-4 h-4 text-gray-500 hover:text-blue-600" />
                   </button>
                 </div>
               ) : (
@@ -243,7 +241,7 @@ function OrderDetails() {
 
       {/* Order Items */}
       <div className="card">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Ordered Items</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Order Items</h2>
         <div className="space-y-6">
           {items.map((item) => {
             const needsLicenses = item.licenses_allocated < item.quantity;
