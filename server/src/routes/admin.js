@@ -984,33 +984,33 @@ router.get('/orders/:orderId', async (req, res) => {
   try {
     const { orderId } = req.params;
 
-    const [orderItems] = await db.execute(
-      `SELECT oi.*, p.product_name, p.shopify_product_id
-      FROM order_items oi
-      JOIN products p ON oi.product_id = p.id
-      WHERE oi.order_id = ?`,
+    const [orders] = await db.execute(
+      `SELECT o.*, s.shop_domain 
+       FROM orders o 
+       JOIN shops s ON o.shop_id = s.id 
+       WHERE o.id = ?`,
       [orderId]
     );
 
-    // Get delivery status for each item separately
-    for (const item of orderItems) {
-      const [emailLog] = await db.execute(
-        `SELECT delivery_status, delivery_updated_at
-        FROM email_logs
-        WHERE order_item_id = ?
-        ORDER BY id DESC
-        LIMIT 1`,
-        [item.id]
-      );
-      
-      if (emailLog.length > 0) {
-        item.delivery_status = emailLog[0].delivery_status;
-        item.delivery_updated_at = emailLog[0].delivery_updated_at;
-      } else {
-        item.delivery_status = 'pending';
-        item.delivery_updated_at = null;
-      }
+    if (orders.length === 0) {
+      return res.status(404).json({ error: 'Order not found' });
     }
+
+    const [orderItems] = await db.execute(
+      `SELECT oi.*, p.product_name, p.shopify_product_id,
+        el.delivery_status, el.delivery_updated_at
+      FROM order_items oi
+      JOIN products p ON oi.product_id = p.id
+      LEFT JOIN (
+        SELECT order_item_id, delivery_status, delivery_updated_at
+        FROM email_logs
+        WHERE order_id = ?
+        ORDER BY id DESC
+      ) el ON oi.id = el.order_item_id
+      WHERE oi.order_id = ?
+      GROUP BY oi.id`,
+      [orderId, orderId]
+    );
 
     // Get allocated licenses for each item
     for (const item of orderItems) {
