@@ -1233,12 +1233,14 @@ router.post('/orders/manual-send', async (req, res) => {
     const orderItemId = orderItemResult.insertId;
 
     // Allocate licenses
+    const safeLimit = parseInt(quantity) || 1; // Ensure it's a number
     const [availableLicenses] = await connection.execute(
       `SELECT id, license_key FROM licenses 
-       WHERE product_id = ? AND allocated = FALSE 
-       LIMIT ?`,
-      [productId, quantity]
+      WHERE product_id = ? AND allocated = FALSE 
+      LIMIT ${safeLimit}`,  // ← Interpolate directly, not as placeholder
+      [productId]  // ← Only one placeholder now
     );
+
 
     const licenseIds = availableLicenses.map(l => l.id);
     const placeholders = licenseIds.map(() => '?').join(',');
