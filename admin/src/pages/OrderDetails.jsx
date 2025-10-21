@@ -291,8 +291,19 @@ function OrderDetails() {
                       )}
                     </div>
                   </div>
-
                   
+                {/* Delivery Status */}
+                {hasEmail && (
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Delivery Status</p>
+                    <DeliveryStatusBadge status={item.delivery_status} />
+                    {item.delivery_updated_at && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Updated: {new Date(item.delivery_updated_at).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                )}  
 
                   <div>
                     <p className="text-sm text-gray-600 mb-1">Email Sent At</p>
@@ -303,6 +314,8 @@ function OrderDetails() {
                     </p>
                   </div>
                 </div>
+
+
 
                 {/* Allocated Licenses */}
                 {item.allocated_licenses && item.allocated_licenses.length > 0 && (
