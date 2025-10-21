@@ -92,9 +92,16 @@ function Orders() {
                   return (
                     <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="py-4 px-4">
-                        <div>
-                          <p className="font-medium text-gray-900">#{order.order_number}</p>
-                          <p className="text-xs text-gray-500">ID: {order.shopify_order_id}</p>
+                        <div className="flex items-center gap-2">
+                          <div>
+                            <p className="font-medium text-gray-900">#{order.order_number}</p>
+                            <p className="text-xs text-gray-500">ID: {order.shopify_order_id}</p>
+                          </div>
+                          {order.order_type === 'manual' && (
+                            <span className="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                              Free
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="py-4 px-4">
