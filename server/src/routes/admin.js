@@ -1,10 +1,10 @@
 // server/src/routes/admin.js
-import { sendLicenseEmail } from '../services/emailService.js';
 import express from 'express';
 import db from '../config/database.js';
 import { shopify } from '../config/shopify.js';
 import Papa from 'papaparse';
 import { manualAllocate } from '../services/orderService.js';
+import { sendLicenseEmail } from '../services/emailService.js';
 import { 
   getShopTemplates, 
   setDefaultTemplate, 
@@ -1026,47 +1026,6 @@ router.post('/orders/:orderId/allocate', async (req, res) => {
   }
 });
 
-// ==========================================
-// STATS ENDPOINTS
-// ==========================================
-
-// Get dashboard stats
-router.get('/stats', async (req, res) => {
-  try {
-    const { shopId } = req.query;
-
-    const shopFilter = shopId ? `WHERE shop_id = ${parseInt(shopId)}` : '';
-
-    const [totalOrders] = await db.execute(
-      `SELECT COUNT(*) as count FROM orders ${shopFilter}`
-    );
-
-    const [totalLicenses] = await db.execute(
-      `SELECT 
-        COUNT(*) as total,
-        SUM(CASE WHEN allocated = FALSE THEN 1 ELSE 0 END) as available
-       FROM licenses l
-       JOIN products p ON l.product_id = p.id
-       ${shopFilter.replace('shop_id', 'p.shop_id')}`
-    );
-
-    const [totalProducts] = await db.execute(
-      `SELECT COUNT(*) as count FROM products ${shopFilter}`
-    );
-
-    res.json({
-      totalOrders: totalOrders[0].count,
-      totalLicenses: totalLicenses[0].total || 0,
-      availableLicenses: totalLicenses[0].available || 0,
-      totalProducts: totalProducts[0].count
-    });
-
-  } catch (error) {
-    console.error('Error fetching stats:', error);
-    res.status(500).json({ error: 'Failed to fetch stats' });
-  }
-});
-
 // Update order email address
 router.put('/orders/:orderId/email', async (req, res) => {
   try {
@@ -1170,6 +1129,47 @@ router.post('/orders/:orderId/resend', async (req, res) => {
   } catch (error) {
     console.error('Error resending email:', error);
     res.status(500).json({ error: 'Failed to resend email' });
+  }
+});
+
+// ==========================================
+// STATS ENDPOINTS
+// ==========================================
+
+// Get dashboard stats
+router.get('/stats', async (req, res) => {
+  try {
+    const { shopId } = req.query;
+
+    const shopFilter = shopId ? `WHERE shop_id = ${parseInt(shopId)}` : '';
+
+    const [totalOrders] = await db.execute(
+      `SELECT COUNT(*) as count FROM orders ${shopFilter}`
+    );
+
+    const [totalLicenses] = await db.execute(
+      `SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN allocated = FALSE THEN 1 ELSE 0 END) as available
+       FROM licenses l
+       JOIN products p ON l.product_id = p.id
+       ${shopFilter.replace('shop_id', 'p.shop_id')}`
+    );
+
+    const [totalProducts] = await db.execute(
+      `SELECT COUNT(*) as count FROM products ${shopFilter}`
+    );
+
+    res.json({
+      totalOrders: totalOrders[0].count,
+      totalLicenses: totalLicenses[0].total || 0,
+      availableLicenses: totalLicenses[0].available || 0,
+      totalProducts: totalProducts[0].count
+    });
+
+  } catch (error) {
+    console.error('Error fetching stats:', error);
+    res.status(500).json({ error: 'Failed to fetch stats' });
   }
 });
 
