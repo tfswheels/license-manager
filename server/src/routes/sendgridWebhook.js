@@ -44,18 +44,28 @@ function verifySendGridSignature(req, res, next) {
 }
 
 // SendGrid event webhook
+// SendGrid event webhook
 router.post('/events', async (req, res) => {
   try {
+    // Debug logging
+    console.log('📥 SendGrid webhook called');
+    console.log('📥 req.body type:', typeof req.body);
+    console.log('📥 req.body:', JSON.stringify(req.body, null, 2));
+    console.log('📥 Is Array?:', Array.isArray(req.body));
+
     const events = req.body;
 
     if (!Array.isArray(events)) {
-      console.error('Invalid SendGrid webhook payload');
+      console.error('❌ Invalid SendGrid webhook payload - not an array');
+      console.error('❌ Received type:', typeof events);
+      console.error('❌ Received value:', events);
       return res.status(400).send('Invalid payload');
     }
 
     console.log(`📧 Received ${events.length} SendGrid event(s)`);
 
     for (const event of events) {
+      console.log('📧 Processing event:', event);
       const { event: eventType, email, timestamp } = event;
 
       // Map SendGrid event types to our delivery statuses
@@ -76,11 +86,11 @@ router.post('/events', async (req, res) => {
           break;
         default:
           // Ignore other events (open, click, etc.)
+          console.log(`⏭️ Skipping event type: ${eventType}`);
           continue;
       }
 
       // Update email_logs for this email address
-      // Find most recent email log for this address
       try {
         const [result] = await db.execute(
           `UPDATE email_logs 
