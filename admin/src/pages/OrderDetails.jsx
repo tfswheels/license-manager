@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mail, AlertCircle, CheckCircle, RefreshCw, X, Send } from 'lucide-react';
+import DeliveryStatusBadge from '../components/DeliveryStatusBadge';
 import { adminAPI } from '../utils/api';
 
 function OrderDetails() {
@@ -221,7 +222,7 @@ function OrderDetails() {
           <h2 className="text-lg font-bold text-gray-900 mb-4">Order Status</h2>
           <div className="space-y-3">
             <div>
-              <p className="text-sm text-gray-600">Shopify Order ID</p>
+              <p className="text-sm text-gray-600">Order ID</p>
               <p className="font-mono text-sm text-gray-900">{order.shopify_order_id}</p>
             </div>
             <div>
@@ -290,6 +291,19 @@ function OrderDetails() {
                       )}
                     </div>
                   </div>
+
+                  {/* Delivery Status */}
+                  {hasEmail && (
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">Delivery Status</p>
+                      <DeliveryStatusBadge status={item.delivery_status} />
+                      {item.delivery_updated_at && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Updated: {new Date(item.delivery_updated_at).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   <div>
                     <p className="text-sm text-gray-600 mb-1">Email Sent At</p>
