@@ -997,19 +997,11 @@ router.get('/orders/:orderId', async (req, res) => {
     }
 
     const [orderItems] = await db.execute(
-      `SELECT oi.*, p.product_name, p.shopify_product_id,
-        el.delivery_status, el.delivery_updated_at
-      FROM order_items oi
-      JOIN products p ON oi.product_id = p.id
-      LEFT JOIN (
-        SELECT order_item_id, delivery_status, delivery_updated_at
-        FROM email_logs
-        WHERE order_id = ?
-        ORDER BY id DESC
-      ) el ON oi.id = el.order_item_id
-      WHERE oi.order_id = ?
-      GROUP BY oi.id`,
-      [orderId, orderId]
+      `SELECT oi.*, p.product_name, p.shopify_product_id
+       FROM order_items oi
+       JOIN products p ON oi.product_id = p.id
+       WHERE oi.order_id = ?`,
+      [orderId]
     );
 
     // Get allocated licenses for each item
