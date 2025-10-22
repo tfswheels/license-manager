@@ -37,6 +37,38 @@ router.get('/shops', async (req, res) => {
   }
 });
 
+// Diagnostic endpoint - check shop OAuth status
+router.get('/shops/:shopId/diagnose', async (req, res) => {
+  try {
+    const { shopId } = req.params;
+
+    const [shops] = await db.execute(
+      'SELECT id, shop_domain, access_token, scopes, installed_at, updated_at FROM shops WHERE id = ?',
+      [shopId]
+    );
+
+    if (shops.length === 0) {
+      return res.status(404).json({ error: 'Shop not found' });
+    }
+
+    const shop = shops[0];
+
+    res.json({
+      id: shop.id,
+      shop_domain: shop.shop_domain,
+      has_access_token: !!shop.access_token,
+      access_token_length: shop.access_token?.length || 0,
+      access_token_preview: shop.access_token ? shop.access_token.substring(0, 10) + '...' : null,
+      scopes: shop.scopes,
+      installed_at: shop.installed_at,
+      updated_at: shop.updated_at
+    });
+  } catch (error) {
+    console.error('Error diagnosing shop:', error);
+    res.status(500).json({ error: 'Failed to diagnose shop' });
+  }
+});
+
 // Fetch products from Shopify - UPDATED to include tags and price
 router.get('/shops/:shopId/shopify-products', async (req, res) => {
   try {
