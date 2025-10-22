@@ -73,19 +73,15 @@ router.get('/callback', async (req, res) => {
 
     console.log('🔵 Redirecting to frontend...');
 
-    // For embedded apps, use Shopify's exitIframe redirect
-    // This ensures the app loads properly within the Shopify admin iframe
-    const redirectUrl = `https://license-manager-lovat.vercel.app?shop=${shop}&host=${req.query.host || ''}`;
+    // Build frontend URL with shop and host parameters
+    const frontendUrl = process.env.FRONTEND_URL || 'https://license-manager-lovat.vercel.app';
+    const host = req.query.host || '';
 
-    // If this is an embedded app request, use exitIframe redirect
-    if (req.query.embedded === '1' || req.query.host) {
-      const shopifyDomain = shop;
-      const embeddedUrl = `https://${shopifyDomain}/admin/apps/${process.env.SHOPIFY_API_KEY}`;
-      res.redirect(embeddedUrl);
-    } else {
-      // Standalone app redirect
-      res.redirect(redirectUrl);
-    }
+    // Redirect to frontend with all necessary parameters for embedded apps
+    const redirectUrl = `${frontendUrl}?shop=${shop}&host=${encodeURIComponent(host)}`;
+
+    console.log(`🔵 Redirecting to: ${redirectUrl}`);
+    res.redirect(redirectUrl);
 
   } catch (error) {
     console.error('❌ OAuth callback error:', error);
