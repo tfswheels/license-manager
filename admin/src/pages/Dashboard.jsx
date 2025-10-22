@@ -33,9 +33,9 @@ function Dashboard() {
 
         const targetShopId = selectedShop || shopsData[0].id;
         console.log('Fetching stats for shop:', targetShopId);
-        
+
         try {
-          const statsRes = await adminAPI.getShopStats(targetShopId);
+          const statsRes = await adminAPI.getStats(targetShopId);
           console.log('Stats response:', statsRes);
           
           if (statsRes?.data) {
