@@ -72,7 +72,20 @@ router.get('/callback', async (req, res) => {
     await registerWebhooks(shop, accessToken);
 
     console.log('🔵 Redirecting to frontend...');
-    res.redirect(`https://license-manager-lovat.vercel.app?shop=${shop}`);
+
+    // For embedded apps, use Shopify's exitIframe redirect
+    // This ensures the app loads properly within the Shopify admin iframe
+    const redirectUrl = `https://license-manager-lovat.vercel.app?shop=${shop}&host=${req.query.host || ''}`;
+
+    // If this is an embedded app request, use exitIframe redirect
+    if (req.query.embedded === '1' || req.query.host) {
+      const shopifyDomain = shop;
+      const embeddedUrl = `https://${shopifyDomain}/admin/apps/${process.env.SHOPIFY_API_KEY}`;
+      res.redirect(embeddedUrl);
+    } else {
+      // Standalone app redirect
+      res.redirect(redirectUrl);
+    }
 
   } catch (error) {
     console.error('❌ OAuth callback error:', error);
@@ -82,23 +95,50 @@ router.get('/callback', async (req, res) => {
 });
 
 async function registerWebhooks(shop, accessToken) {
-  const client = new shopify.clients.Rest({ 
-    session: { shop, accessToken } 
+  const client = new shopify.clients.Rest({
+    session: { shop, accessToken }
   });
 
-  try {
-    await client.post({
-      path: 'webhooks',
-      data: {
-        webhook: {
-          topic: 'orders/create',
-          address: `${process.env.APP_URL}/webhooks/orders/create`,
-          format: 'json'
-        }
-      }
-    });
+  const webhooks = [
+    // Order webhook for license processing
+    {
+      topic: 'orders/create',
+      address: `${process.env.APP_URL}/webhooks/orders/create`,
+      format: 'json'
+    },
+    // GDPR Compliance webhooks (required for Shopify App Store)
+    {
+      topic: 'customers/data_request',
+      address: `${process.env.APP_URL}/webhooks/gdpr/customers/data_request`,
+      format: 'json'
+    },
+    {
+      topic: 'customers/redact',
+      address: `${process.env.APP_URL}/webhooks/gdpr/customers/redact`,
+      format: 'json'
+    },
+    {
+      topic: 'shop/redact',
+      address: `${process.env.APP_URL}/webhooks/gdpr/shop/redact`,
+      format: 'json'
+    }
+  ];
 
-    console.log(`✅ Webhooks registered for ${shop}`);
+  try {
+    for (const webhook of webhooks) {
+      try {
+        await client.post({
+          path: 'webhooks',
+          data: { webhook }
+        });
+        console.log(`✅ Registered webhook: ${webhook.topic}`);
+      } catch (webhookError) {
+        // Log but continue with other webhooks
+        console.error(`⚠️ Failed to register webhook ${webhook.topic}:`, webhookError.message);
+      }
+    }
+
+    console.log(`✅ All webhooks registered for ${shop}`);
   } catch (error) {
     console.error('Webhook registration error:', error);
   }

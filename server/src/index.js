@@ -2,16 +2,22 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
+import billingRoutes from './routes/billing.js';
 import webhookRoutes from './routes/webhooks.js';
+import gdprWebhookRoutes from './routes/gdprWebhooks.js';
 import adminRoutes from './routes/admin.js';
 import templateRulesRoutes from './routes/templateRules.js';
 import sendgridWebhookRoutes from './routes/sendgridWebhook.js';
+import { applyAllSecurityHeaders } from './middleware/securityHeaders.js';
 import './config/database.js';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Apply comprehensive security headers (must be first)
+app.use(applyAllSecurityHeaders);
 
 // CORS configuration
 app.use(cors({
@@ -26,13 +32,16 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Shopify webhook needs raw body for HMAC verification (specific route)
+// Shopify webhooks need raw body for HMAC verification (specific routes)
 app.use('/webhooks/orders', express.raw({ type: 'application/json' }));
+app.use('/webhooks/gdpr', express.raw({ type: 'application/json' }));
 
 // Routes
-app.use('/webhooks/orders', webhookRoutes);  // Shopify webhooks
+app.use('/webhooks/orders', webhookRoutes);  // Shopify order webhooks
+app.use('/webhooks/gdpr', gdprWebhookRoutes);  // Shopify GDPR webhooks
 app.use('/webhooks/sendgrid', sendgridWebhookRoutes);  // SendGrid webhooks
 app.use('/auth', authRoutes);
+app.use('/auth/billing', billingRoutes);  // Billing routes
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin', templateRulesRoutes);
 
