@@ -6,9 +6,16 @@ export default function SystemSettings() {
   const [shops, setShops] = useState([]);
   const [selectedShop, setSelectedShop] = useState(null);
   const [settings, setSettings] = useState(null);
+  const [originalSettings, setOriginalSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+
+  // Check if settings have changed
+  const hasChanges = () => {
+    if (!settings || !originalSettings) return false;
+    return JSON.stringify(settings) !== JSON.stringify(originalSettings);
+  };
 
   useEffect(() => {
     loadShops();
@@ -39,7 +46,18 @@ export default function SystemSettings() {
     try {
       const response = await adminAPI.getShopSettings(selectedShop);
       const settingsData = response.data || response;
-      setSettings(settingsData);
+
+      // Convert MySQL TINYINT (0/1) to proper booleans
+      const normalizedSettings = {
+        ...settingsData,
+        enforce_unique_licenses: Boolean(settingsData.enforce_unique_licenses),
+        enforce_unique_per_order: Boolean(settingsData.enforce_unique_per_order),
+        notify_on_out_of_stock: Boolean(settingsData.notify_on_out_of_stock),
+        notify_on_uniqueness_issue: Boolean(settingsData.notify_on_uniqueness_issue)
+      };
+
+      setSettings(normalizedSettings);
+      setOriginalSettings(JSON.parse(JSON.stringify(normalizedSettings))); // Deep copy
     } catch (error) {
       console.error('Failed to load settings:', error);
       showMessage('error', 'Failed to load settings');
@@ -52,6 +70,7 @@ export default function SystemSettings() {
     setSaving(true);
     try {
       await adminAPI.updateShopSettings(selectedShop, settings);
+      setOriginalSettings(JSON.parse(JSON.stringify(settings))); // Update original after save
       showMessage('success', 'Settings saved successfully!');
     } catch (error) {
       console.error('Failed to save settings:', error);
@@ -70,7 +89,18 @@ export default function SystemSettings() {
     try {
       const response = await adminAPI.resetShopSettings(selectedShop);
       const resetSettings = response.data?.settings || response.settings;
-      setSettings(resetSettings);
+
+      // Convert MySQL TINYINT (0/1) to proper booleans
+      const normalizedSettings = {
+        ...resetSettings,
+        enforce_unique_licenses: Boolean(resetSettings.enforce_unique_licenses),
+        enforce_unique_per_order: Boolean(resetSettings.enforce_unique_per_order),
+        notify_on_out_of_stock: Boolean(resetSettings.notify_on_out_of_stock),
+        notify_on_uniqueness_issue: Boolean(resetSettings.notify_on_uniqueness_issue)
+      };
+
+      setSettings(normalizedSettings);
+      setOriginalSettings(JSON.parse(JSON.stringify(normalizedSettings)));
       showMessage('success', 'Settings reset to defaults');
     } catch (error) {
       console.error('Failed to reset settings:', error);
@@ -127,15 +157,15 @@ export default function SystemSettings() {
             <button
               onClick={handleReset}
               disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <RotateCcw className="w-4 h-4" />
               Reset to Defaults
             </button>
             <button
               onClick={handleSave}
-              disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              disabled={saving || !hasChanges()}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save className="w-4 h-4" />
               {saving ? 'Saving...' : 'Save Settings'}
@@ -225,35 +255,42 @@ export default function SystemSettings() {
               <h3 className="text-sm font-medium text-gray-700 mb-3">License Uniqueness</h3>
 
               <div className="space-y-3">
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={settings.enforce_unique_licenses}
-                    onChange={(e) => updateSetting('enforce_unique_licenses', e.target.checked)}
-                    className="mt-1 w-4 h-4 text-blue-600 rounded"
-                  />
-                  <div>
-                    <div className="font-medium text-gray-900">Enforce unique licenses for product</div>
-                    <div className="text-sm text-gray-600">
-                      Ensures all licenses allocated for a product are unique. If disabled, duplicate licenses can be sent.
+                <div>
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={settings.enforce_unique_licenses}
+                      onChange={(e) => updateSetting('enforce_unique_licenses', e.target.checked)}
+                      className="mt-1 w-4 h-4 text-blue-600 rounded"
+                    />
+                    <div>
+                      <div className="font-medium text-gray-900">Enforce unique licenses for product</div>
+                      <div className="text-sm text-gray-600">
+                        Ensures all licenses allocated for a product are unique. If disabled, duplicate licenses can be sent.
+                      </div>
                     </div>
-                  </div>
-                </label>
+                  </label>
 
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={settings.enforce_unique_per_order}
-                    onChange={(e) => updateSetting('enforce_unique_per_order', e.target.checked)}
-                    className="mt-1 w-4 h-4 text-blue-600 rounded"
-                  />
-                  <div>
-                    <div className="font-medium text-gray-900">Prevent duplicate licenses in same order</div>
-                    <div className="text-sm text-gray-600">
-                      Ensures the same order will never receive duplicate license keys, even if the above setting is disabled.
+                  {/* Nested option - only show when enforce_unique_licenses is FALSE */}
+                  {!settings.enforce_unique_licenses && (
+                    <div className="ml-7 mt-3 pl-4 border-l-2 border-gray-300">
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={settings.enforce_unique_per_order}
+                          onChange={(e) => updateSetting('enforce_unique_per_order', e.target.checked)}
+                          className="mt-1 w-4 h-4 text-blue-600 rounded"
+                        />
+                        <div>
+                          <div className="font-medium text-gray-900">Prevent duplicate licenses in same order</div>
+                          <div className="text-sm text-gray-600">
+                            Even without enforcing global uniqueness, prevent the same order from receiving duplicate license keys.
+                          </div>
+                        </div>
+                      </label>
                     </div>
-                  </div>
-                </label>
+                  )}
+                </div>
               </div>
 
               <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
@@ -367,6 +404,32 @@ export default function SystemSettings() {
                 Override the default sender name for license emails
               </p>
             </div>
+
+            {/* SendGrid Domain Verification Warning */}
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-semibold text-amber-900 mb-2">SendGrid Domain Verification Required</p>
+                  <p className="text-amber-800 mb-2">
+                    To use a custom sender email, you must verify your domain in SendGrid. This involves:
+                  </p>
+                  <ol className="list-decimal ml-4 space-y-1 text-amber-800 mb-2">
+                    <li>Log into your SendGrid account</li>
+                    <li>Go to Settings → Sender Authentication</li>
+                    <li>Click "Authenticate Your Domain"</li>
+                    <li>Add the provided DNS records (SPF, DKIM, CNAME) to your domain registrar</li>
+                    <li>Wait for verification (can take up to 48 hours)</li>
+                  </ol>
+                  <p className="text-amber-800">
+                    <strong>Alternative:</strong> Use a verified sender address from Settings → Sender Authentication → Single Sender Verification.
+                  </p>
+                  <p className="text-amber-700 mt-2 text-xs">
+                    Without proper verification, emails may be rejected or marked as spam.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -436,15 +499,15 @@ export default function SystemSettings() {
         <button
           onClick={handleReset}
           disabled={saving}
-          className="flex items-center gap-2 px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+          className="flex items-center gap-2 px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <RotateCcw className="w-4 h-4" />
           Reset to Defaults
         </button>
         <button
           onClick={handleSave}
-          disabled={saving}
-          className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          disabled={saving || !hasChanges()}
+          className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Save className="w-4 h-4" />
           {saving ? 'Saving...' : 'Save Settings'}
