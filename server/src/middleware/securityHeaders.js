@@ -88,6 +88,7 @@ export function embeddedAppCors(req, res, next) {
     /^https:\/\/.*\.myshopify\.com$/,
     'http://localhost:5173',
     'https://digikeyhq.com',  // Production custom domain
+    'https://www.digikeyhq.com',  // Production custom domain with www
     'https://license-manager-lovat.vercel.app'  // Legacy URL
   ];
 
