@@ -91,6 +91,13 @@ export const adminAPI = {
   
   // Stats
   getStats: (shopId = null) => api.get('/api/admin/stats', { params: { shopId } }),
+
+  // Settings
+  getShopSettings: (shopId) => api.get(`/api/admin/shops/${shopId}/settings`),
+  updateShopSettings: (shopId, settings) =>
+    api.put(`/api/admin/shops/${shopId}/settings`, settings),
+  resetShopSettings: (shopId) =>
+    api.post(`/api/admin/shops/${shopId}/settings/reset`),
 };
 
 export default api;

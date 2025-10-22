@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Settings as SettingsIcon, Plus, Trash2, Save, Play, Tag } from 'lucide-react';
 import { adminAPI } from '../utils/api';
 
-export default function Settings() {
+export default function TemplateRules() {
   const [shops, setShops] = useState([]);
   const [selectedShop, setSelectedShop] = useState(null);
   const [templates, setTemplates] = useState([]);

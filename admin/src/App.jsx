@@ -8,7 +8,8 @@ import Orders from './pages/Orders';
 import OrderDetails from './pages/OrderDetails';
 import Templates from './pages/Templates';
 import TemplateEditor from './pages/TemplateEditor';
-import Settings from './pages/Settings';
+import TemplateRules from './pages/TemplateRules';
+import SystemSettings from './pages/SystemSettings';
 
 function App() {
   return (
@@ -23,7 +24,8 @@ function App() {
           <Route path="/templates" element={<Templates />} />
           <Route path="/templates/new" element={<TemplateEditor />} />
           <Route path="/templates/:id/edit" element={<TemplateEditor />} />
-          <Route path="/settings" element={<Settings />} />
+          <Route path="/template-rules" element={<TemplateRules />} />
+          <Route path="/settings" element={<SystemSettings />} />
         </Routes>
       </Layout>
     </Router>

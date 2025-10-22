@@ -5,11 +5,17 @@ import { shopify } from '../config/shopify.js';
 import Papa from 'papaparse';
 import { manualAllocate } from '../services/orderService.js';
 import { sendLicenseEmail } from '../services/emailService.js';
-import { 
-  getShopTemplates, 
-  setDefaultTemplate, 
-  validateTemplate 
+import {
+  getShopTemplates,
+  setDefaultTemplate,
+  validateTemplate
 } from '../services/templateService.js';
+import {
+  getShopSettings,
+  updateShopSettings,
+  resetShopSettings,
+  validateSettings
+} from '../services/settingsService.js';
 
 
 const router = express.Router();
@@ -1345,6 +1351,63 @@ router.get('/stats', async (req, res) => {
   } catch (error) {
     console.error('Error fetching stats:', error);
     res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+});
+
+// ==========================================
+// SETTINGS ENDPOINTS
+// ==========================================
+
+// Get shop settings
+router.get('/shops/:shopId/settings', async (req, res) => {
+  try {
+    const { shopId } = req.params;
+    const settings = await getShopSettings(parseInt(shopId));
+    res.json(settings);
+  } catch (error) {
+    console.error('Error fetching settings:', error);
+    res.status(500).json({ error: 'Failed to fetch settings' });
+  }
+});
+
+// Update shop settings
+router.put('/shops/:shopId/settings', async (req, res) => {
+  try {
+    const { shopId } = req.params;
+    const settings = req.body;
+
+    // Validate settings
+    validateSettings(settings);
+
+    const updatedSettings = await updateShopSettings(parseInt(shopId), settings);
+    res.json({
+      success: true,
+      message: 'Settings updated successfully',
+      settings: updatedSettings
+    });
+  } catch (error) {
+    console.error('Error updating settings:', error);
+    if (error.message.includes('must be')) {
+      res.status(400).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: 'Failed to update settings' });
+    }
+  }
+});
+
+// Reset shop settings to defaults
+router.post('/shops/:shopId/settings/reset', async (req, res) => {
+  try {
+    const { shopId } = req.params;
+    const settings = await resetShopSettings(parseInt(shopId));
+    res.json({
+      success: true,
+      message: 'Settings reset to defaults',
+      settings
+    });
+  } catch (error) {
+    console.error('Error resetting settings:', error);
+    res.status(500).json({ error: 'Failed to reset settings' });
   }
 });
 
