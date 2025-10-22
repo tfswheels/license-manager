@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS shop_settings (
 
   -- Out of Stock Behavior
   out_of_stock_behavior ENUM('no_email', 'send_placeholder') DEFAULT 'no_email' COMMENT 'What to do when no licenses available',
-  out_of_stock_placeholder TEXT DEFAULT 'Please contact us for your license key' COMMENT 'Placeholder text when sending email with no licenses',
+  out_of_stock_placeholder VARCHAR(500) DEFAULT 'Please contact us for your license key' COMMENT 'Placeholder text when sending email with no licenses',
 
   -- Email Settings
   custom_sender_email VARCHAR(255) DEFAULT NULL COMMENT 'Custom sender email address for license emails',
