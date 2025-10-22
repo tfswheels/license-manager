@@ -1,4 +1,4 @@
-# License Manager for Shopify
+# DigiKey HQ - License Manager for Shopify
 
 A complete digital license distribution system for Shopify stores. Automatically sends license keys to customers after purchase with custom email templates.
 
@@ -8,19 +8,28 @@ A complete digital license distribution system for Shopify stores. Automatically
 
 ## 🎯 Project Overview
 
-**Status:** 🟢 **LIVE IN PRODUCTION**  
-**Deployed:** October 14, 2025  
-**Frontend:** https://license-manager-lovat.vercel.app  
-**Backend API:** https://license-manager-production-96dd.up.railway.app  
+**Status:** 🟢 **SHOPIFY APP STORE READY**
+**Deployed:** October 2025
+**Website:** https://digikeyhq.com
+**API:** https://api.digikeyhq.com
 
 ### Tech Stack
-- **Backend:** Node.js, Express, MySQL, Shopify API, SendGrid  
-- **Frontend:** React 19, Vite, Tailwind CSS  
+- **Backend:** Node.js, Express, MySQL, Shopify API, SendGrid
+- **Frontend:** React 18, Vite 5, Tailwind CSS 4
 - **Infrastructure:** Railway (backend), Vercel (frontend), Google Cloud SQL (database)
+- **Integration:** Shopify App Bridge 3.x, OAuth 2.0, Session Tokens
 
 ---
 
 ## ✨ Current Features
+
+### 🏪 Shopify App Store Ready ✅ NEW
+- **GDPR Compliance** - All 3 mandatory webhooks implemented
+- **Legal Documentation** - Privacy Policy, Terms of Service, GDPR Compliance pages
+- **App Billing** - 4 subscription tiers with free trials
+- **Embedded App** - Seamless integration with Shopify Admin via App Bridge
+- **Security Headers** - Comprehensive CSP, HSTS, and security best practices
+- **Session Token Auth** - JWT-based authentication for embedded apps
 
 ### 🚀 Automatic License Delivery ✅
 - Webhook-driven automation (orders/create)
@@ -36,7 +45,7 @@ A complete digital license distribution system for Shopify stores. Automatically
 - Auto-generate plain text from HTML
 - Product-specific template assignment
 - Set shop default template
-- **Automatic template assignment via rules** ⭐ NEW
+- **Automatic template assignment via rules** ⭐
 - Template variable system: `{{first_name}}`, `{{last_name}}`, `{{order_number}}`, `{{license_keys}}`, `{{product_name}}`
 - Template validation with warnings
 - Click-to-insert variable palette
@@ -47,7 +56,7 @@ A complete digital license distribution system for Shopify stores. Automatically
 - Bulk product selection with checkboxes
 - Bulk template assignment
 - Individual product template selection
-- **Product metadata storage (tags, vendor, price)** ⭐ NEW
+- **Product metadata storage (tags, vendor, price)** ⭐
 - License inventory tracking per product
 - Pagination (25/50/100/250 per page)
 - Product filtering and sorting
@@ -63,7 +72,7 @@ A complete digital license distribution system for Shopify stores. Automatically
 - Release allocated licenses back to pool
 - Download license lists
 
-### ⚙️ System Settings ✅ NEW
+### ⚙️ System Settings ✅
 - **License Delivery Method** - Choose FIFO (oldest first) or LIFO (newest first)
 - **License Uniqueness Enforcement** - Prevent duplicate license allocation
 - **Per-Order Uniqueness** - No duplicate licenses within same order
@@ -87,6 +96,25 @@ A complete digital license distribution system for Shopify stores. Automatically
 - **Bulk Rule Application** - Apply rules to all products at once
 - **Active/Inactive Rules** - Toggle rules without deletion
 
+### 💰 Shopify App Billing ✅ NEW
+- **Free Tier** - 2 products, 100 licenses
+- **Basic** - $9.99/mo, 10 products, 1K licenses, 7-day trial
+- **Professional** - $29.99/mo, 50 products, 10K licenses, advanced rules
+- **Enterprise** - $99.99/mo, unlimited products/licenses, dedicated support
+- Automatic subscription management
+- Free trial periods
+- Usage-based limits
+- Seamless plan upgrades
+
+### 🔐 GDPR Compliance ✅ NEW
+- **customers/data_request** - Export customer data on request
+- **customers/redact** - Anonymize customer data after 48 hours
+- **shop/redact** - Delete all shop data after app uninstall
+- Audit logging for all GDPR requests
+- Privacy Policy (https://digikeyhq.com/privacy-policy)
+- Terms of Service (https://digikeyhq.com/terms-of-service)
+- GDPR Compliance page (https://digikeyhq.com/gdpr-compliance)
+
 ### 📊 Complete Admin Dashboard ✅
 - Real-time statistics (orders, licenses, products)
 - Shop selector for multi-store support
@@ -95,16 +123,25 @@ A complete digital license distribution system for Shopify stores. Automatically
 - License allocation status indicators
 - Warning indicators for incomplete allocations
 - Detailed order view
-- **Settings page for system configuration** ⭐ NEW
+- **Settings page for system configuration** ⭐
+- **Embedded in Shopify Admin** ⭐ NEW
 - Responsive design
 - Modern UI with Tailwind CSS
 
 ### 🔐 Security & Compliance ✅
 - OAuth 2.0 for Shopify authentication
+- **Session Token Authentication** (JWT) for embedded apps
 - HMAC webhook signature verification
+- **Comprehensive Security Headers:**
+  - Content-Security-Policy (CSP)
+  - X-Frame-Options (for embedding)
+  - Strict-Transport-Security (HSTS)
+  - X-Content-Type-Options
+  - Referrer-Policy
+  - Permissions-Policy
 - Database connection pooling with prepared statements
 - Environment variable configuration (no secrets in code)
-- CORS restricted to admin panel origin
+- CORS restricted to trusted origins
 - Template validation (prevents XSS)
 - Railway IP whitelist on Cloud SQL database
 - Private network database connection (Railway internal)
@@ -112,6 +149,8 @@ A complete digital license distribution system for Shopify stores. Automatically
 ---
 
 ## 🏗️ Architecture
+
+### Application Flow
 ```
 Customer Order (Shopify)
     ↓
@@ -125,7 +164,24 @@ License Allocator
     └→ Check Inventory → Send Alert if Low
 ```
 
-### Database Schema (10 Tables)
+### Shopify Integration
+```
+Merchant Installs App
+    ↓
+OAuth Flow (api.digikeyhq.com/auth)
+    ↓
+Shop Saved + Webhooks Registered
+    ↓
+Redirect to Embedded App (digikeyhq.com)
+    ↓
+App Bridge Initializes
+    ↓
+Session Token Authentication
+    ↓
+App Loads in Shopify Admin iframe
+```
+
+### Database Schema (12 Tables)
 
 **Core Tables:**
 - `shops` - Installed Shopify stores with OAuth tokens, exclusion tags
@@ -137,11 +193,13 @@ License Allocator
 - `email_templates` - Custom email templates
 - `inventory_alerts` - Low stock notifications
 - `template_assignment_rules` - Automatic template assignment rules
-- `shop_settings` - **NEW** - Comprehensive system settings per shop
+- `shop_settings` - Comprehensive system settings per shop
+- `subscriptions` - **NEW** - Shopify billing subscriptions
+- `gdpr_requests` - **NEW** - GDPR compliance audit log
 
 ---
 
-## 🎯 Complete Roadmap & Planned Improvements
+## 🎯 Complete Roadmap
 
 ### ✅ Phase 1: Core System (COMPLETE - October 2025)
 - [x] OAuth installation flow
@@ -154,161 +212,101 @@ License Allocator
 - [x] Custom email templates
 - [x] Template editor with live preview
 - [x] Production deployment
-- [x] **Template assignment rules** ⭐
-- [x] **Settings page** ⭐
+- [x] Template assignment rules
+- [x] Settings page
+- [x] **Shopify App Store integration** ⭐
+- [x] **GDPR compliance webhooks** ⭐
+- [x] **App billing system** ⭐
+- [x] **Embedded app with App Bridge** ⭐
+- [x] **Security headers** ⭐
 
 ---
 
 ### 🚧 Phase 2: Enhanced Operations (IN PROGRESS - Q4 2025)
 
 #### Order Management & Customer Service
-1. [ ] **Manual License Allocation** 🔥 - Allocate licenses to orders that failed due to insufficient inventory
-2. [ ] **Resend License Email** 🔥 - Re-send licenses to customer with current email address
-3. [ ] **Update Customer Email** 🔥 - Change customer email address on order record
-4. [ ] **Email Delivery Status Tracking** - Show delivery status (✅ Delivered, ⚠️ Pending, ❌ Failed/Bounced) using SendGrid webhooks
-5. [ ] **Auto-retry Failed Allocations** - When licenses uploaded, prompt to auto-allocate to waiting orders
-6. [ ] **Show Order Price** - Display order value on Orders page and Order details
+1. [ ] **Manual License Allocation** 🔥 - Allocate licenses to orders that failed
+2. [ ] **Resend License Email** 🔥 - Re-send licenses with current email
+3. [ ] **Update Customer Email** 🔥 - Change customer email on order
+4. [ ] **Email Delivery Status Tracking** - Show delivery status with SendGrid webhooks
+5. [ ] **Auto-retry Failed Allocations** - Prompt to allocate when licenses uploaded
 
 #### Product & License Management
-7. [ ] **Show Product Price** - Display product price on Products page (data already stored)
-8. [ ] **Manual License Send** - Send license directly to customer (name + email), creates free order record
-9. [x] **License Send Method** ✅ - Choose allocation strategy: FIFO (first-in-first-out), LIFO (last-in-first-out)
-10. [x] **License Uniqueness Enforcement** ✅ - Prevent duplicate license allocation if enabled
-11. [x] **Per-Order License Uniqueness** ✅ - Same order won't receive duplicate licenses (when uniqueness enabled)
-12. [x] **Out-of-Stock Behavior** ✅ - Configure what happens when no licenses available:
-    - Don't send email
-    - Send with custom placeholder message
+6. [ ] **Show Product Price** - Display product price on Products page
+7. [ ] **Manual License Send** - Send license directly to customer
+8. [ ] **License Expiration Dates** - Time-limited licenses
 
 #### Template System
-13. [x] **Template Assignment Rules** - Auto-assign templates based on:
-    - [x] Product tags
-    - [x] Price ranges
-    - [x] Vendor
-    - [ ] Collections (framework ready, needs full implementation)
-14. [x] **Template Rule Exclusion Tag** - Add tag to products to exclude from automatic template rules
-15. [x] **Template Rule Re-assignment** - When rules saved, re-assign all products automatically
-16. [ ] **Template Preview Emails** - Send test emails with sample data
-17. [ ] **Template Duplication** - Copy existing templates
+9. [ ] **Template Preview Emails** - Send test emails with sample data
+10. [ ] **Template Duplication** - Copy existing templates
 
-#### Settings & Configuration
-18. [x] **System Settings Page** ✅ - Centralized settings management for:
-    - [x] Template assignment rules
-    - [x] License allocation strategy (FIFO/LIFO)
-    - [x] Uniqueness settings
-    - [x] Out-of-stock behavior
-    - [x] Email delivery preferences (SaaS architecture)
-    - [x] Notification settings
-19. [x] **Email Settings Per Shop** ✅ - Custom display names and reply-to addresses (SaaS multi-tenant)
-20. [ ] **Advanced Reporting** - Export orders, licenses, and analytics data
+#### Analytics & Reporting
+11. [ ] **Advanced Reporting** - Export orders, licenses, analytics
+12. [ ] **Analytics Dashboard** - Usage metrics and trends
 
 ---
 
 ### 🔮 Phase 3: Advanced Features (2026)
 
-#### License Management
-21. [ ] **License Expiration Dates** - Time-limited licenses with auto-expiry
-22. [ ] **License Usage Tracking** - Track activation and usage statistics
-23. [ ] **License Auto-Generation** - Generate keys automatically using custom algorithms
-
 #### Customer Experience
-24. [ ] **Customer Portal** - Self-service license management for customers
-25. [ ] **Multi-language Support** - Localized templates and UI
+- [ ] **Customer Portal** - Self-service license management
+- [ ] **Multi-language Support** - Localized templates and UI
 
 #### Developer & Integration
-26. [ ] **Public API** - Developer API for custom integrations
-27. [ ] **Webhook Retry Logic** - Automatic retry for failed webhooks
-28. [ ] **Advanced Fraud Detection** - Suspicious order flagging and prevention
+- [ ] **Public API** - Developer API for custom integrations
+- [ ] **Webhook Retry Logic** - Automatic retry for failed webhooks
+- [ ] **Advanced Fraud Detection** - Suspicious order flagging
 
-#### Analytics & Insights
-29. [ ] **Analytics Dashboard** - Usage metrics, trends, and business intelligence
-30. [ ] **Rich Text Template Editor** - WYSIWYG editor option for templates
-
----
-
-## 📊 Feature Priority Matrix
-
-| Priority | Features | Est. Time | Status |
-|----------|----------|-----------|--------|
-| 🔥 **HIGH** | Manual Allocation, Email Updates, Resend Email | 10-15 hours | Next Sprint |
-| 🟡 **MEDIUM** | Delivery Status, Manual Send, Out-of-Stock Behavior, Uniqueness | 20-25 hours | Sprint 2-3 |
-| 🟢 **LOW** | Price Display, Send Method, Template Preview, Reporting | 10-15 hours | Sprint 3-4 |
-| ⚪ **DEFER** | Customer Portal, Auto-Gen, Fraud Detection, Analytics | 100+ hours | Phase 3 |
+#### License Management
+- [ ] **License Usage Tracking** - Track activation and usage
+- [ ] **License Auto-Generation** - Generate keys automatically
 
 ---
 
-## 🗓️ Recommended Implementation Order
+## 💡 Competitive Advantages
 
-### ✅ **Sprint 1 (Week 1) - COMPLETE** 
-1. ✅ Settings Page (infrastructure foundation)
-2. ✅ Template Assignment Rules
-3. ✅ Product metadata storage
-
-**Completed: ~12 hours**
-
-### **Sprint 2 (Week 2) - Core Customer Service** ⚡
-1. Manual License Allocation
-2. Update Customer Email
-3. Resend License Email
-4. Show Order/Product Prices
-
-**Total: ~12-15 hours**
-
-### **Sprint 3 (Week 3) - Customer Experience** 🎨
-5. Out-of-Stock Behavior
-6. Manual License Send
-7. Template Preview Emails
-8. Email Delivery Status
-
-**Total: ~15-20 hours**
-
-### **Sprint 4 (Week 4) - Advanced Features** 🚀
-9. License Uniqueness Enforcement
-10. License Send Method (FIFO/LIFO/Random)
-11. Email Settings Per Shop
-12. Auto-retry Failed Allocations
-
-**Total: ~18-25 hours**
-
----
-
-## 💡 Key Features vs Competitors
-
-| Feature | This App | SendOwl | Sky Pilot |
-|---------|----------|---------|-----------|
-| Price | $19.99/mo | $15-159/mo | $15-35/mo |
-| Unlimited Templates | ✅ | ❌ | ❌ |
-| Product-Specific Templates | ✅ | ❌ | ❌ |
+| Feature | DigiKey HQ | SendOwl | Sky Pilot |
+|---------|-----------|---------|-----------|
+| **Price** | $9.99-99.99/mo | $15-159/mo | $15-35/mo |
+| **Shopify App Store** | ✅ | ❌ | ✅ |
+| **Embedded App** | ✅ | ❌ | ✅ |
+| **Unlimited Templates** | ✅ | ❌ | ❌ |
 | **Template Assignment Rules** | ✅ ⭐ | ❌ | ❌ |
-| Excel Upload | ✅ | ❌ | ❌ |
-| Live Template Preview | ✅ | ❌ | ❌ |
-| Modern UI | ✅ | ❌ | ⚠️ |
-| Bulk Operations | ✅ | ⚠️ | ⚠️ |
-| Real-time Stats | ✅ | ⚠️ | ⚠️ |
-| GraphQL Product Fetch | ✅ | ❌ | ❌ |
-| Multi-Shop Support | ✅ | ⚠️ | ⚠️ |
-| License Uniqueness | 🔜 | ❌ | ⚠️ |
+| **Excel Upload** | ✅ | ❌ | ❌ |
+| **Live Template Preview** | ✅ | ❌ | ❌ |
+| **GDPR Compliant** | ✅ | ⚠️ | ⚠️ |
+| **Modern UI** | ✅ | ❌ | ⚠️ |
+| **GraphQL Product Fetch** | ✅ | ❌ | ❌ |
+| **Custom Email Settings** | ✅ | ❌ | ❌ |
+| **Bulk Operations** | ✅ | ⚠️ | ⚠️ |
 
 ---
 
 ## 📝 Development Notes
 
+### Shopify Integration
+- **Embedded App Mode** - Runs inside Shopify Admin iframe
+- **App Bridge 3.x** - Modern embedded app framework
+- **Session Tokens** - JWT-based authentication (no cookies)
+- **OAuth 2.0** - Initial installation flow
+- **Webhooks** - Auto-registered on installation
+- **Billing API** - GraphQL mutations for subscriptions
+
+### GDPR Compliance
+- **customers/data_request** - Collects order and email data
+- **customers/redact** - Anonymizes PII after 48 hours
+- **shop/redact** - Complete data deletion after uninstall
+- **Audit Logging** - All GDPR requests logged
+- **Public Legal Pages** - Accessible without authentication
+
 ### Database
 - Uses UTC timestamps throughout
 - Licenses can have duplicates (inventory system)
 - Allocated licenses locked to `order_id`
-- Products with NULL `email_template_id` use shop's default template
-- **Template rules evaluated by priority (lower number = higher priority)**
-- **Products store tags, vendor, price for rule matching**
+- Products with NULL `email_template_id` use shop's default
+- Template rules evaluated by priority (lower = higher priority)
 - Connection pool max: 10 connections
 - Index optimization on frequently queried fields
-
-### Template Assignment Rules
-- **Rule Types**: tag, vendor, price_range, collection
-- **Priority System**: Rules evaluated in order (1-999, lower first)
-- **Exclusion Mechanism**: Products with exclusion tag bypass all rules
-- **Active/Inactive**: Toggle rules without deletion
-- **Bulk Application**: Apply all rules to all products with one click
-- **Automatic Updates**: Can trigger re-assignment when products added
 
 ### Email System
 - Both HTML and plain text versions sent
@@ -316,42 +314,23 @@ License Allocator
 - SendGrid free tier: 100 emails/day
 - Template variables replaced at send time
 - Default template auto-created on shop install
-- **Template selection via rules or manual assignment**
-- Customer name handling: Uses first/last name or defaults to "Customer"
+- SaaS architecture with reply-to support
 
-### Webhooks
-- Auto-registered during OAuth installation
-- Signature verified using HMAC with `SHOPIFY_WEBHOOK_SECRET`
-- Async processing (responds 200 OK immediately to Shopify)
-- Errors logged but don't block webhook response
-- 5-second timeout for webhook processing
-- Idempotent handling (won't process same order twice)
-
-### Frontend
-- React 19 with hooks
-- Vite for fast builds
-- Tailwind CSS for styling
-- React Router for navigation
-- Axios for API calls
-- Excel parsing via SheetJS
-- CSV parsing via PapaCSV
-- Icon library: Lucide React
-
-### Backend
-- Express server with ES6 modules
-- MySQL connection pooling
-- Shopify SDK for OAuth and API calls
-- SendGrid for email delivery
-- CORS enabled for Vercel frontend
-- Environment-based configuration
-- RESTful API design
+### Security
+- **CSP** - Restricts resource loading to trusted sources
+- **Session Tokens** - Auto-refresh every minute
+- **HMAC Verification** - All webhooks verified
+- **Prepared Statements** - SQL injection prevention
+- **Environment Variables** - No secrets in code
+- **HTTPS Only** - Enforced in production
 
 ---
 
 ## 🔐 Security Checklist
 
 - [x] OAuth 2.0 implementation
-- [x] Webhook signature verification
+- [x] Session token authentication
+- [x] Webhook signature verification (HMAC)
 - [x] Environment variables for secrets
 - [x] Database connection pooling
 - [x] SQL injection prevention (prepared statements)
@@ -360,13 +339,10 @@ License Allocator
 - [x] HTTPS enforced (Railway + Vercel)
 - [x] Database IP whitelist
 - [x] No secrets in code/git
-- [x] Secure password storage (OAuth tokens)
-
----
-
-## 🐛 Known Issues
-
-**None currently!** 🎉
+- [x] Content Security Policy (CSP)
+- [x] Security headers (HSTS, X-Frame-Options, etc.)
+- [x] GDPR compliance
+- [x] Rate limiting headers
 
 ---
 
@@ -393,7 +369,12 @@ cd ../server
 cp .env.example .env
 # Edit .env with your credentials
 
+cd ../admin
+cp .env.example .env
+# Edit .env with your API key
+
 # 4. Setup database
+cd ../server
 node setup-database.js
 node run-migration.js
 
@@ -417,6 +398,18 @@ ngrok http 3001
 # Update server/.env APP_URL with ngrok URL
 ```
 
+### Testing GDPR Webhooks
+
+```bash
+# Install Shopify CLI
+npm install -g @shopify/cli @shopify/app
+
+# Trigger webhooks
+shopify webhook trigger --topic customers/data_request
+shopify webhook trigger --topic customers/redact
+shopify webhook trigger --topic shop/redact
+```
+
 ---
 
 ## 📡 API Endpoints
@@ -430,7 +423,20 @@ GET  /auth/status        - Check installation status
 
 ### Webhooks
 ```
-POST /webhooks/orders/create  - Order creation webhook (auto-registered)
+POST /webhooks/orders/create                      - Order creation webhook
+POST /webhooks/gdpr/customers/data_request        - GDPR data export
+POST /webhooks/gdpr/customers/redact              - GDPR customer deletion
+POST /webhooks/gdpr/shop/redact                   - GDPR shop deletion
+POST /webhooks/sendgrid                           - SendGrid delivery status
+```
+
+### Billing
+```
+GET  /auth/billing/status       - Check subscription status
+POST /auth/billing/subscribe    - Create subscription
+POST /auth/billing/cancel       - Cancel subscription
+GET  /auth/billing/callback     - Billing confirmation
+GET  /auth/billing/plans        - List available plans
 ```
 
 ### Admin API
@@ -482,11 +488,9 @@ POST /api/admin/shops/:id/template-rules              - Create rule
 PUT  /api/admin/shops/:id/template-rules/:ruleId      - Update rule
 DELETE /api/admin/shops/:id/template-rules/:ruleId    - Delete rule
 POST /api/admin/shops/:id/template-rules/apply        - Apply all rules
-GET  /api/admin/shops/:id/template-rules/exclusion-tag - Get exclusion tag
-PUT  /api/admin/shops/:id/template-rules/exclusion-tag - Set exclusion tag
 ```
 
-**System Settings (NEW):**
+**System Settings:**
 ```
 GET  /api/admin/shops/:id/settings       - Get shop settings
 PUT  /api/admin/shops/:id/settings       - Update shop settings
@@ -502,46 +506,104 @@ GET  /api/admin/shops/:id/stats  - Get shop statistics
 
 ## 📦 Deployment
 
+### Production URLs
+- **Frontend:** https://digikeyhq.com
+- **Backend:** https://api.digikeyhq.com
+- **Database:** Google Cloud SQL (MySQL)
+
 ### Backend (Railway)
 1. Create Railway project
-2. Add MySQL plugin
-3. Set environment variables
+2. Add MySQL plugin (or connect external)
+3. Set environment variables:
+   ```bash
+   APP_URL=https://api.digikeyhq.com
+   FRONTEND_URL=https://digikeyhq.com
+   SHOPIFY_API_KEY=...
+   SHOPIFY_API_SECRET=...
+   # ... see .env.example
+   ```
 4. Deploy from GitHub
-5. Configure domain
+5. Configure custom domain: `api.digikeyhq.com`
 
 ### Frontend (Vercel)
 1. Import GitHub repository
 2. Framework preset: Vite
-3. Build: `npm run build`
-4. Output: `dist`
-5. Deploy
+3. Root Directory: `admin`
+4. Build Command: `npm run build`
+5. Output Directory: `dist`
+6. Environment variables:
+   ```bash
+   VITE_SHOPIFY_API_KEY=...
+   VITE_API_URL=https://api.digikeyhq.com
+   VITE_ENV=production
+   ```
+7. Configure custom domain: `digikeyhq.com`
 
 ### Database Migrations
 
-When deploying new features:
+Run migrations in order:
 ```bash
-# Run migrations in order
-node run-migration.js
+001_initial_schema.sql
+002_email_templates.sql
+002_add_manual_orders.sql
+003_template_assignment_rules.sql
+004_add_price_columns.sql
+005_shop_settings.sql
+006_add_reply_to_email.sql
+007_gdpr_requests.sql          # NEW - GDPR audit logging
+008_subscriptions.sql          # NEW - Shopify billing
+```
+
+### Shopify Partner Dashboard Configuration
+
+**App URL:** `https://digikeyhq.com`
+
+**Allowed redirection URL(s):**
+```
+https://api.digikeyhq.com/auth/callback
+```
+
+**Embedded app:** ✅ **Enabled**
+
+**Webhooks:**
+- `orders/create` → `https://api.digikeyhq.com/webhooks/orders/create`
+- `customers/data_request` → `https://api.digikeyhq.com/webhooks/gdpr/customers/data_request`
+- `customers/redact` → `https://api.digikeyhq.com/webhooks/gdpr/customers/redact`
+- `shop/redact` → `https://api.digikeyhq.com/webhooks/gdpr/shop/redact`
+
+**Legal URLs:**
+- Privacy Policy: `https://digikeyhq.com/privacy-policy`
+- Terms of Service: `https://digikeyhq.com/terms-of-service`
+
+**App Scopes:**
+```
+read_products, read_orders, read_customers
 ```
 
 ---
 
 ## 🎓 Recent Updates
 
+### October 22, 2025 - Shopify App Store Ready 🎉
+- ✅ Implemented all 3 mandatory GDPR webhooks
+- ✅ Created public legal documentation pages
+- ✅ Integrated Shopify Billing API with 4 subscription tiers
+- ✅ Converted to embedded app with App Bridge 3.x
+- ✅ Implemented session token authentication
+- ✅ Added comprehensive security headers (CSP, HSTS, etc.)
+- ✅ Updated OAuth flow for embedded apps
+- ✅ Created SHOPIFY_INTEGRATION.md documentation
+- ✅ Fixed navigation parameter persistence
+- ✅ Made legal pages publicly accessible
+- ✅ **Custom domain: digikeyhq.com** 🎯
+
 ### October 22, 2025 - Comprehensive System Settings
 - ✅ Added System Settings page with full configuration UI
 - ✅ Implemented license delivery method (FIFO/LIFO)
-- ✅ Added license uniqueness enforcement (global + per-order)
-- ✅ Configured out-of-stock behavior (no email or placeholder)
-- ✅ Implemented SaaS email architecture:
-  - Custom shop display names
-  - Reply-to email support
-  - Multi-tenant sending from verified platform domain
+- ✅ Added license uniqueness enforcement
+- ✅ Configured out-of-stock behavior
+- ✅ Implemented SaaS email architecture
 - ✅ Added notification system for admin alerts
-- ✅ Created shop_settings table with comprehensive configuration
-- ✅ Updated license allocation logic to respect all settings
-- ✅ Database schema expanded to 10 tables
-- ✅ Documentation for future premium tier (custom domain verification)
 
 ### October 17, 2025 - Template Rules Engine
 - ✅ Added Template Rules page with rule management UI
@@ -549,11 +611,35 @@ node run-migration.js
 - ✅ Added product metadata storage (tags, vendor, price)
 - ✅ Created rule priority system
 - ✅ Added exclusion tag functionality
-- ✅ Updated product fetching to include metadata
 
 ---
 
+## 📚 Documentation
 
+- **README.md** - This file (project overview)
+- **SHOPIFY_INTEGRATION.md** - Complete Shopify integration guide
+- **server/.env.example** - Backend environment variables
+- **admin/.env.example** - Frontend environment variables
 
+---
+
+## 🌐 Links
+
+- **Website:** https://digikeyhq.com
+- **API:** https://api.digikeyhq.com
+- **Privacy Policy:** https://digikeyhq.com/privacy-policy
+- **Terms of Service:** https://digikeyhq.com/terms-of-service
+- **GDPR Compliance:** https://digikeyhq.com/gdpr-compliance
+- **Support:** support@digikeyhq.com
+
+---
+
+## 📄 License
+
+Proprietary - All rights reserved
+
+---
 
 **Built with ❤️ for digital product sellers who deserve better tools.**
+
+**DigiKey HQ** - Professional license management for Shopify stores.

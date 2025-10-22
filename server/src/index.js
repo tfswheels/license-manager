@@ -23,7 +23,8 @@ app.use(applyAllSecurityHeaders);
 app.use(cors({
   origin: [
     'http://localhost:5173',  // Local development
-    'https://license-manager-lovat.vercel.app'  // Production frontend
+    'https://digikeyhq.com',  // Production frontend (custom domain)
+    'https://license-manager-lovat.vercel.app'  // Legacy URL (keep for transition)
   ],
   credentials: true
 }));
@@ -52,10 +53,11 @@ app.get('/health', (req, res) => {
 
 // Root endpoint
 app.get('/', (req, res) => {
-  res.json({ 
-    message: 'License Manager API',
+  res.json({
+    message: 'DigiKey HQ API',
     version: '1.0.0',
-    status: 'running'
+    status: 'running',
+    website: 'https://digikeyhq.com'
   });
 });
 
@@ -96,9 +98,9 @@ app.use((err, req, res, next) => {
 
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🚀 DigiKey HQ API running on port ${PORT}`);
   console.log(`📦 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🌐 CORS enabled for:`, ['http://localhost:5173', 'https://license-manager-lovat.vercel.app']);
+  console.log(`🌐 CORS enabled for:`, ['http://localhost:5173', 'https://digikeyhq.com', 'https://license-manager-lovat.vercel.app']);
 });
 
 // Handle graceful shutdown

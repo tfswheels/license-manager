@@ -87,7 +87,8 @@ export function embeddedAppCors(req, res, next) {
     'https://admin.shopify.com',
     /^https:\/\/.*\.myshopify\.com$/,
     'http://localhost:5173',
-    'https://license-manager-lovat.vercel.app'
+    'https://digikeyhq.com',  // Production custom domain
+    'https://license-manager-lovat.vercel.app'  // Legacy URL
   ];
 
   const isAllowed = allowedOrigins.some(allowed => {

@@ -69,7 +69,7 @@ We've created comprehensive legal documentation pages hosted on the Vercel front
 
 #### 1. Privacy Policy
 - **Route**: `/privacy-policy`
-- **URL**: `https://license-manager-lovat.vercel.app/privacy-policy`
+- **URL**: `https://digikeyhq.com/privacy-policy`
 - **Contents**:
   - Data collection and usage
   - GDPR compliance information
@@ -80,7 +80,7 @@ We've created comprehensive legal documentation pages hosted on the Vercel front
 
 #### 2. Terms of Service
 - **Route**: `/terms-of-service`
-- **URL**: `https://license-manager-lovat.vercel.app/terms-of-service`
+- **URL**: `https://digikeyhq.com/terms-of-service`
 - **Contents**:
   - Service description
   - User responsibilities
@@ -91,7 +91,7 @@ We've created comprehensive legal documentation pages hosted on the Vercel front
 
 #### 3. GDPR Compliance Page
 - **Route**: `/gdpr-compliance`
-- **URL**: `https://license-manager-lovat.vercel.app/gdpr-compliance`
+- **URL**: `https://digikeyhq.com/gdpr-compliance`
 - **Contents**:
   - Detailed GDPR principles
   - User rights explanation
@@ -103,9 +103,9 @@ We've created comprehensive legal documentation pages hosted on the Vercel front
 
 When submitting to Shopify App Store, use these URLs:
 
-- **Privacy Policy URL**: `https://license-manager-lovat.vercel.app/privacy-policy`
-- **Terms of Service URL**: `https://license-manager-lovat.vercel.app/terms-of-service`
-- **Support URL**: `support@license-manager.app`
+- **Privacy Policy URL**: `https://digikeyhq.com/privacy-policy`
+- **Terms of Service URL**: `https://digikeyhq.com/terms-of-service`
+- **Support URL**: `support@digikeyhq.com`
 
 ### Files
 
@@ -323,20 +323,20 @@ app.use('/api/admin', verifySessionToken);
 
 **Backend** (Railway):
 ```bash
-APP_URL=https://your-backend.railway.app
+APP_URL=https://api.digikeyhq.com
 SHOPIFY_API_KEY=your_key
 SHOPIFY_API_SECRET=your_secret
 SHOPIFY_SCOPES=read_products,read_orders,read_customers
-SHOPIFY_REDIRECT_URI=https://your-backend.railway.app/auth/callback
+SHOPIFY_REDIRECT_URI=https://api.digikeyhq.com/auth/callback
 SHOPIFY_WEBHOOK_SECRET=your_webhook_secret
-FRONTEND_URL=https://license-manager-lovat.vercel.app
+FRONTEND_URL=https://digikeyhq.com
 NODE_ENV=production
 ```
 
 **Frontend** (Vercel):
 ```bash
 VITE_SHOPIFY_API_KEY=your_shopify_api_key
-VITE_API_URL=https://your-backend.railway.app
+VITE_API_URL=https://api.digikeyhq.com
 VITE_ENV=production
 ```
 
@@ -439,7 +439,7 @@ shopify webhook trigger --topic shop/redact --api-version 2024-01
 ## Support
 
 For questions about Shopify integration:
-- **Email**: support@license-manager.app
+- **Email**: support@digikeyhq.com
 - **Documentation**: This file
 - **Shopify Partner Help**: https://help.shopify.com/partners
 
