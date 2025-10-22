@@ -57,9 +57,9 @@ export async function processOrder(shopDomain, orderData) {
       const quantity = lineItem.quantity;
 
       const [orderItemResult] = await connection.execute(
-        `INSERT INTO order_items (order_id, product_id, shopify_line_item_id, quantity)
-         VALUES (?, ?, ?, ?)`,
-        [orderId, dbProductId, lineItem.id.toString(), quantity]
+        `INSERT INTO order_items (order_id, product_id, shopify_line_item_id, quantity, price)
+         VALUES (?, ?, ?, ?, ?)`,
+        [orderId, dbProductId, lineItem.id.toString(), quantity, parseFloat(lineItem.price) || 0]
       );
 
       const orderItemId = orderItemResult.insertId;

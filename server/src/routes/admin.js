@@ -1231,9 +1231,9 @@ router.post('/orders/manual-send', async (req, res) => {
 
     // Create order item
     const [orderItemResult] = await connection.execute(
-      `INSERT INTO order_items (order_id, product_id, quantity)
-       VALUES (?, ?, ?)`,
-      [orderId, productId, quantity]
+      `INSERT INTO order_items (order_id, product_id, quantity, price)
+       VALUES (?, ?, ?, ?)`,
+      [orderId, productId, quantity, product.price || 0]
     );
 
     const orderItemId = orderItemResult.insertId;

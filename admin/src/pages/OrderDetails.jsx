@@ -254,9 +254,23 @@ function OrderDetails() {
                     <h3 className="text-lg font-medium text-gray-900">{item.product_name}</h3>
                     <p className="text-sm text-gray-500">Product ID: {item.shopify_product_id}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm text-gray-600">Quantity</p>
-                    <p className="text-2xl font-bold text-gray-900">{item.quantity}</p>
+                  <div className="flex gap-8 text-right">
+                    <div>
+                      <p className="text-sm text-gray-600">Price</p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        ${item.price ? parseFloat(item.price).toFixed(2) : '0.00'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Quantity</p>
+                      <p className="text-2xl font-bold text-gray-900">{item.quantity}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Total</p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        ${item.price ? (parseFloat(item.price) * item.quantity).toFixed(2) : '0.00'}
+                      </p>
+                    </div>
                   </div>
                 </div>
 

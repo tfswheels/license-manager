@@ -325,6 +325,7 @@ function Products() {
                   </th>
                   <th className="text-left py-3 px-4 font-medium text-gray-700">Product</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-700">Shop</th>
+                  <th className="text-right py-3 px-4 font-medium text-gray-700">Price</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-700">Email Template</th>
                   <th className="text-right py-3 px-4 font-medium text-gray-700">Total Licenses</th>
                   <th className="text-right py-3 px-4 font-medium text-gray-700">Available</th>
@@ -362,6 +363,11 @@ function Products() {
                       </td>
                       <td className="py-4 px-4 text-sm text-gray-600">
                         {product.shop_domain || 'Unknown'}
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <span className="font-medium text-gray-900">
+                          ${product.price ? parseFloat(product.price).toFixed(2) : '0.00'}
+                        </span>
                       </td>
                       <td className="py-4 px-4">
                         <select
