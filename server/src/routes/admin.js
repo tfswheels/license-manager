@@ -1092,6 +1092,9 @@ router.post('/orders/:orderId/resend', async (req, res) => {
 
     const order = orders[0];
 
+    // Load shop settings for email customization
+    const settings = await getShopSettings(order.shop_id);
+
     // Get order items with licenses
     const [orderItems] = await db.execute(
       `SELECT oi.*, p.product_name, p.id as product_id
@@ -1102,8 +1105,8 @@ router.post('/orders/:orderId/resend', async (req, res) => {
     );
 
     if (orderItems.length === 0) {
-      return res.status(400).json({ 
-        error: 'No licenses allocated for this order' 
+      return res.status(400).json({
+        error: 'No licenses allocated for this order'
       });
     }
 
@@ -1124,7 +1127,8 @@ router.post('/orders/:orderId/resend', async (req, res) => {
           orderNumber: order.order_number,
           productName: item.product_name,
           productId: item.product_id,
-          licenses: licenses.map(l => l.license_key)
+          licenses: licenses.map(l => l.license_key),
+          settings
         });
 
         // Log the resend
@@ -1188,6 +1192,9 @@ router.post('/orders/manual-send', async (req, res) => {
     }
 
     const product = products[0];
+
+    // Load shop settings for email customization
+    const settings = await getShopSettings(product.shop_id);
 
     // Check if enough licenses are available
     const [licenseCount] = await connection.execute(
@@ -1277,7 +1284,8 @@ router.post('/orders/manual-send', async (req, res) => {
       orderNumber: freeOrderId,
       productName: product.product_name,
       productId: productId,
-      licenses: availableLicenses.map(l => l.license_key)
+      licenses: availableLicenses.map(l => l.license_key),
+      settings
     });
 
     // Log email
