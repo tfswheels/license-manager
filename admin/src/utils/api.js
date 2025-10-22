@@ -1,9 +1,8 @@
 import axios from 'axios';
 
+// Use VITE_API_URL environment variable, fallback to localhost for development
 const api = axios.create({
-  baseURL: import.meta.env.PROD 
-    ? 'https://license-manager-production-96dd.up.railway.app'
-    : 'http://localhost:3001',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001',
   headers: {
     'Content-Type': 'application/json',
   },
