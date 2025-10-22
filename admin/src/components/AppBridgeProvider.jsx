@@ -1,5 +1,5 @@
 // admin/src/components/AppBridgeProvider.jsx
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { Provider as AppBridgeProvider } from '@shopify/app-bridge-react';
 import { useLocation } from 'react-router-dom';
 
@@ -13,24 +13,46 @@ export default function ShopifyAppBridgeProvider({ children }) {
   // Get API key from environment
   const apiKey = import.meta.env.VITE_SHOPIFY_API_KEY || '';
 
-  // Get shop from URL query params
+  // Get shop from URL query params or sessionStorage
   const shopOrigin = useMemo(() => {
     const params = new URLSearchParams(location.search);
-    const shop = params.get('shop');
+    let shop = params.get('shop');
+
+    // If not in URL, try sessionStorage
+    if (!shop) {
+      shop = sessionStorage.getItem('shopify_shop');
+    }
 
     // Ensure shop domain has .myshopify.com suffix
     if (shop && !shop.includes('.myshopify.com')) {
-      return `${shop}.myshopify.com`;
+      shop = `${shop}.myshopify.com`;
     }
 
     return shop || '';
   }, [location.search]);
 
-  // Get host from URL query params (required for embedded apps)
+  // Get host from URL query params or sessionStorage (required for embedded apps)
   const host = useMemo(() => {
     const params = new URLSearchParams(location.search);
-    return params.get('host') || '';
+    let hostParam = params.get('host');
+
+    // If not in URL, try sessionStorage
+    if (!hostParam) {
+      hostParam = sessionStorage.getItem('shopify_host');
+    }
+
+    return hostParam || '';
   }, [location.search]);
+
+  // Store shop and host in sessionStorage when they're available
+  useEffect(() => {
+    if (shopOrigin) {
+      sessionStorage.setItem('shopify_shop', shopOrigin);
+    }
+    if (host) {
+      sessionStorage.setItem('shopify_host', host);
+    }
+  }, [shopOrigin, host]);
 
   // App Bridge configuration
   const config = useMemo(() => {
