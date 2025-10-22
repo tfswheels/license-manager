@@ -18,26 +18,32 @@ import GDPRCompliance from './pages/GDPRCompliance';
 function App() {
   return (
     <Router>
-      <AppBridgeProvider>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/products" element={<Products />} />
-            <Route path="/products/:productId/licenses" element={<ProductLicenses />} />
-            <Route path="/orders" element={<Orders />} />
-            <Route path="/orders/:orderId" element={<OrderDetails />} />
-            <Route path="/templates" element={<Templates />} />
-            <Route path="/templates/new" element={<TemplateEditor />} />
-            <Route path="/templates/:id/edit" element={<TemplateEditor />} />
-            <Route path="/template-rules" element={<TemplateRules />} />
-            <Route path="/settings" element={<SystemSettings />} />
-            {/* Legal Pages */}
-            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-            <Route path="/terms-of-service" element={<TermsOfService />} />
-            <Route path="/gdpr-compliance" element={<GDPRCompliance />} />
-          </Routes>
-        </Layout>
-      </AppBridgeProvider>
+      <Routes>
+        {/* Public Legal Pages - No authentication required */}
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-of-service" element={<TermsOfService />} />
+        <Route path="/gdpr-compliance" element={<GDPRCompliance />} />
+
+        {/* Protected Admin Routes - Require Shopify authentication */}
+        <Route path="/*" element={
+          <AppBridgeProvider>
+            <Layout>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/products" element={<Products />} />
+                <Route path="/products/:productId/licenses" element={<ProductLicenses />} />
+                <Route path="/orders" element={<Orders />} />
+                <Route path="/orders/:orderId" element={<OrderDetails />} />
+                <Route path="/templates" element={<Templates />} />
+                <Route path="/templates/new" element={<TemplateEditor />} />
+                <Route path="/templates/:id/edit" element={<TemplateEditor />} />
+                <Route path="/template-rules" element={<TemplateRules />} />
+                <Route path="/settings" element={<SystemSettings />} />
+              </Routes>
+            </Layout>
+          </AppBridgeProvider>
+        } />
+      </Routes>
     </Router>
   );
 }
