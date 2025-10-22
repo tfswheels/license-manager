@@ -63,7 +63,20 @@ A complete digital license distribution system for Shopify stores. Automatically
 - Release allocated licenses back to pool
 - Download license lists
 
-### ⚙️ Settings & Automation ✅ NEW
+### ⚙️ System Settings ✅ NEW
+- **License Delivery Method** - Choose FIFO (oldest first) or LIFO (newest first)
+- **License Uniqueness Enforcement** - Prevent duplicate license allocation
+- **Per-Order Uniqueness** - No duplicate licenses within same order
+- **Out-of-Stock Behavior** - Configure what happens when licenses unavailable:
+  - Don't send email
+  - Send with custom placeholder message
+- **Email Settings (SaaS Architecture)** - Multi-tenant email delivery:
+  - Custom shop display name
+  - Reply-to email address (customer replies go to merchant)
+  - Advanced: Custom sender email (requires domain verification)
+- **Notification Settings** - Admin alerts for:
+  - Out of stock situations
+  - Uniqueness constraint issues
 - **Template Assignment Rules Engine** - Auto-assign templates based on:
   - Product tags (e.g., "software", "game")
   - Vendor/manufacturer
@@ -112,7 +125,7 @@ License Allocator
     └→ Check Inventory → Send Alert if Low
 ```
 
-### Database Schema (9 Tables)
+### Database Schema (10 Tables)
 
 **Core Tables:**
 - `shops` - Installed Shopify stores with OAuth tokens, exclusion tags
@@ -123,7 +136,8 @@ License Allocator
 - `email_logs` - Audit trail of sent emails
 - `email_templates` - Custom email templates
 - `inventory_alerts` - Low stock notifications
-- `template_assignment_rules` - **NEW** - Automatic template assignment rules
+- `template_assignment_rules` - Automatic template assignment rules
+- `shop_settings` - **NEW** - Comprehensive system settings per shop
 
 ---
 
@@ -158,13 +172,12 @@ License Allocator
 #### Product & License Management
 7. [ ] **Show Product Price** - Display product price on Products page (data already stored)
 8. [ ] **Manual License Send** - Send license directly to customer (name + email), creates free order record
-9. [ ] **License Send Method** - Choose allocation strategy: FIFO (first-in-first-out), LIFO (last-in-first-out), or Random
-10. [ ] **License Uniqueness Enforcement** - Prevent duplicate license allocation if enabled
-11. [ ] **Per-Order License Uniqueness** - Same order won't receive duplicate licenses (when uniqueness enabled)
-12. [ ] **Out-of-Stock Behavior** - Configure what happens when no licenses available:
+9. [x] **License Send Method** ✅ - Choose allocation strategy: FIFO (first-in-first-out), LIFO (last-in-first-out)
+10. [x] **License Uniqueness Enforcement** ✅ - Prevent duplicate license allocation if enabled
+11. [x] **Per-Order License Uniqueness** ✅ - Same order won't receive duplicate licenses (when uniqueness enabled)
+12. [x] **Out-of-Stock Behavior** ✅ - Configure what happens when no licenses available:
     - Don't send email
-    - Replace `{{license_keys}}` with custom placeholder message
-    - Send "Contact merchant" message
+    - Send with custom placeholder message
 
 #### Template System
 13. [x] **Template Assignment Rules** - Auto-assign templates based on:
@@ -178,13 +191,14 @@ License Allocator
 17. [ ] **Template Duplication** - Copy existing templates
 
 #### Settings & Configuration
-18. [x] **Settings Page** 🔥 - Centralized settings management for:
+18. [x] **System Settings Page** ✅ - Centralized settings management for:
     - [x] Template assignment rules
-    - [ ] License allocation strategy (infrastructure ready)
-    - [ ] Uniqueness settings
-    - [ ] Out-of-stock behavior
-    - [ ] Email delivery preferences
-19. [ ] **Email Settings Per Shop** - Custom from addresses and sender names
+    - [x] License allocation strategy (FIFO/LIFO)
+    - [x] Uniqueness settings
+    - [x] Out-of-stock behavior
+    - [x] Email delivery preferences (SaaS architecture)
+    - [x] Notification settings
+19. [x] **Email Settings Per Shop** ✅ - Custom display names and reply-to addresses (SaaS multi-tenant)
 20. [ ] **Advanced Reporting** - Export orders, licenses, and analytics data
 
 ---
@@ -461,7 +475,7 @@ DELETE /api/admin/templates/:id  - Delete template
 PUT  /api/admin/templates/:id/default - Set as default
 ```
 
-**Template Rules (NEW):**
+**Template Rules:**
 ```
 GET  /api/admin/shops/:id/template-rules              - Get all rules
 POST /api/admin/shops/:id/template-rules              - Create rule
@@ -470,6 +484,13 @@ DELETE /api/admin/shops/:id/template-rules/:ruleId    - Delete rule
 POST /api/admin/shops/:id/template-rules/apply        - Apply all rules
 GET  /api/admin/shops/:id/template-rules/exclusion-tag - Get exclusion tag
 PUT  /api/admin/shops/:id/template-rules/exclusion-tag - Set exclusion tag
+```
+
+**System Settings (NEW):**
+```
+GET  /api/admin/shops/:id/settings       - Get shop settings
+PUT  /api/admin/shops/:id/settings       - Update shop settings
+POST /api/admin/shops/:id/settings/reset - Reset settings to defaults
 ```
 
 **Stats:**
@@ -507,14 +528,28 @@ node run-migration.js
 
 ## 🎓 Recent Updates
 
-### October 17, 2025 - Settings & Template Rules
-- ✅ Added Settings page with rule management UI
+### October 22, 2025 - Comprehensive System Settings
+- ✅ Added System Settings page with full configuration UI
+- ✅ Implemented license delivery method (FIFO/LIFO)
+- ✅ Added license uniqueness enforcement (global + per-order)
+- ✅ Configured out-of-stock behavior (no email or placeholder)
+- ✅ Implemented SaaS email architecture:
+  - Custom shop display names
+  - Reply-to email support
+  - Multi-tenant sending from verified platform domain
+- ✅ Added notification system for admin alerts
+- ✅ Created shop_settings table with comprehensive configuration
+- ✅ Updated license allocation logic to respect all settings
+- ✅ Database schema expanded to 10 tables
+- ✅ Documentation for future premium tier (custom domain verification)
+
+### October 17, 2025 - Template Rules Engine
+- ✅ Added Template Rules page with rule management UI
 - ✅ Implemented template assignment rules engine
 - ✅ Added product metadata storage (tags, vendor, price)
 - ✅ Created rule priority system
 - ✅ Added exclusion tag functionality
 - ✅ Updated product fetching to include metadata
-- ✅ Database schema expanded to 9 tables
 
 ---
 
