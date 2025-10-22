@@ -372,64 +372,92 @@ export default function SystemSettings() {
             <h2 className="text-xl font-semibold text-gray-900">Email Settings</h2>
           </div>
 
+          {/* SaaS Email Architecture Info */}
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex gap-3">
+              <Mail className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-semibold text-blue-900 mb-2">How Email Sending Works (SaaS)</p>
+                <p className="text-blue-800 mb-2">
+                  For multi-tenant SaaS, emails are sent from <strong>our verified domain</strong> (like Shopify does).
+                  You can customize the display name and reply-to address for your shop:
+                </p>
+                <div className="space-y-1 text-blue-800">
+                  <p><strong>From:</strong> "Your Shop Name &lt;licenses@platform.com&gt;"</p>
+                  <p><strong>Reply-To:</strong> support@yourshop.com (customer replies go here)</p>
+                </div>
+                <p className="text-blue-700 mt-2 text-xs">
+                  This approach ensures reliable delivery without requiring DNS setup from each merchant.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Custom Sender Email
-              </label>
-              <input
-                type="email"
-                value={settings.custom_sender_email || ''}
-                onChange={(e) => updateSetting('custom_sender_email', e.target.value || null)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="e.g., licenses@yourcompany.com (leave blank to use default)"
-              />
-              <p className="mt-1 text-sm text-gray-600">
-                Override the default sender email address for license emails
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Custom Sender Name
+                Shop Display Name
               </label>
               <input
                 type="text"
                 value={settings.custom_sender_name || ''}
                 onChange={(e) => updateSetting('custom_sender_name', e.target.value || null)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="e.g., Your Company Licenses (leave blank to use default)"
+                placeholder="e.g., Your Shop Name"
               />
               <p className="mt-1 text-sm text-gray-600">
-                Override the default sender name for license emails
+                This name appears in the "From" field when customers receive license emails
+              </p>
+              <p className="mt-1 text-xs text-gray-500">
+                Example: "Your Shop Name &lt;licenses@platform.com&gt;"
               </p>
             </div>
 
-            {/* SendGrid Domain Verification Warning */}
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-              <div className="flex gap-3">
-                <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                <div className="text-sm">
-                  <p className="font-semibold text-amber-900 mb-2">SendGrid Domain Verification Required</p>
-                  <p className="text-amber-800 mb-2">
-                    To use a custom sender email, you must verify your domain in SendGrid. This involves:
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Reply-To Email Address
+              </label>
+              <input
+                type="email"
+                value={settings.reply_to_email || ''}
+                onChange={(e) => updateSetting('reply_to_email', e.target.value || null)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="e.g., support@yourshop.com"
+              />
+              <p className="mt-1 text-sm text-gray-600">
+                When customers reply to license emails, their replies will go to this address
+              </p>
+            </div>
+
+            {/* Advanced: Custom Sender Email (Admin Only) */}
+            <details className="pt-4 border-t border-gray-200">
+              <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
+                Advanced: Custom Sender Email (Requires Domain Verification)
+              </summary>
+              <div className="mt-4 space-y-3">
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-xs text-amber-800">
+                    <strong>Warning:</strong> Changing the sender email requires SendGrid domain verification.
+                    Leave blank to use the platform default (recommended).
                   </p>
-                  <ol className="list-decimal ml-4 space-y-1 text-amber-800 mb-2">
-                    <li>Log into your SendGrid account</li>
-                    <li>Go to Settings → Sender Authentication</li>
-                    <li>Click "Authenticate Your Domain"</li>
-                    <li>Add the provided DNS records (SPF, DKIM, CNAME) to your domain registrar</li>
-                    <li>Wait for verification (can take up to 48 hours)</li>
-                  </ol>
-                  <p className="text-amber-800">
-                    <strong>Alternative:</strong> Use a verified sender address from Settings → Sender Authentication → Single Sender Verification.
-                  </p>
-                  <p className="text-amber-700 mt-2 text-xs">
-                    Without proper verification, emails may be rejected or marked as spam.
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Custom Sender Email (Optional)
+                  </label>
+                  <input
+                    type="email"
+                    value={settings.custom_sender_email || ''}
+                    onChange={(e) => updateSetting('custom_sender_email', e.target.value || null)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Leave blank to use platform default"
+                  />
+                  <p className="mt-1 text-xs text-gray-600">
+                    Override the platform sender email (requires DNS verification in SendGrid)
                   </p>
                 </div>
               </div>
-            </div>
+            </details>
           </div>
         </div>
 

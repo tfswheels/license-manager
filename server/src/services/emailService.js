@@ -71,6 +71,11 @@ export async function sendLicenseEmail({
       html: htmlContent
     };
 
+    // Add reply-to if configured (for SaaS multi-tenant setup)
+    if (settings?.reply_to_email) {
+      msg.replyTo = settings.reply_to_email;
+    }
+
     await sgMail.send(msg);
     console.log(`✅ Email sent to ${email} using template: ${template.template_name} from ${fromEmail}`);
 

@@ -42,6 +42,7 @@ async function updateShopSettings(shopId, settings) {
     'out_of_stock_placeholder',
     'custom_sender_email',
     'custom_sender_name',
+    'reply_to_email',
     'enforce_unique_licenses',
     'enforce_unique_per_order',
     'notification_email',
@@ -120,6 +121,10 @@ function validateSettings(settings) {
   // Validate email addresses
   if (settings.custom_sender_email && !isValidEmail(settings.custom_sender_email)) {
     throw new Error('custom_sender_email must be a valid email address');
+  }
+
+  if (settings.reply_to_email && !isValidEmail(settings.reply_to_email)) {
+    throw new Error('reply_to_email must be a valid email address');
   }
 
   if (settings.notification_email && !isValidEmail(settings.notification_email)) {
