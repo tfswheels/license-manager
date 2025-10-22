@@ -135,6 +135,13 @@ router.get('/shops/:shopId/shopify-products', async (req, res) => {
       after: cursor || null
     };
 
+    // Log request details for debugging
+    console.log('🔍 [Product Fetch] Request Details:');
+    console.log('   Shop Domain:', shop_domain);
+    console.log('   Token Type:', access_token?.substring(0, 6) || 'none');
+    console.log('   Token Length:', access_token?.length || 0);
+    console.log('   API Version: 2024-01');
+
     const response = await fetch(`https://${shop_domain}/admin/api/2024-01/graphql.json`, {
       method: 'POST',
       headers: {
@@ -144,11 +151,23 @@ router.get('/shops/:shopId/shopify-products', async (req, res) => {
       body: JSON.stringify({ query, variables })
     });
 
+    console.log('🔍 [Product Fetch] Response Status:', response.status);
+
     if (!response.ok) {
-      throw new Error(`Shopify API error: ${response.status}`);
+      // Try to get detailed error response
+      let errorDetails = '';
+      try {
+        const errorBody = await response.text();
+        console.log('❌ [Product Fetch] Error Response Body:', errorBody);
+        errorDetails = errorBody;
+      } catch (e) {
+        console.log('❌ [Product Fetch] Could not read error body');
+      }
+      throw new Error(`Shopify API error: ${response.status} - ${errorDetails}`);
     }
 
     const result = await response.json();
+    console.log('✅ [Product Fetch] Success - Got response data');
 
     if (result.errors) {
       console.error('GraphQL errors:', result.errors);
