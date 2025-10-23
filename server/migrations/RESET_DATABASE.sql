@@ -32,7 +32,8 @@ CREATE TABLE shops (
   scopes TEXT,
   installed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  exclusion_tags TEXT COMMENT 'Comma-separated list of tags that bypass template rules',
+  template_rule_exclusion_tag VARCHAR(255) DEFAULT NULL COMMENT 'Products with this tag bypass all template assignment rules',
+  last_rule_application TIMESTAMP NULL COMMENT 'Timestamp of last automatic rule application',
   INDEX idx_shop_domain (shop_domain)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
