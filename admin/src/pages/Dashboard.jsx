@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Package, ShoppingCart, Key, AlertCircle, Mail } from 'lucide-react';
 import { adminAPI } from '../utils/api';
+import { getCurrentShopId } from '../utils/shopUtils';
 
 function Dashboard() {
   const [shops, setShops] = useState([]);
@@ -19,19 +20,30 @@ function Dashboard() {
     try {
       setLoading(true);
       setError(null);
-      
+
       console.log('Fetching shops...');
       const shopsRes = await adminAPI.getShops();
       console.log('Shops response:', shopsRes);
-      
+
       // Handle different response structures
       const shopsData = shopsRes?.data?.shops || shopsRes?.data || [];
       console.log('Shops data:', shopsData);
-      
+
       if (Array.isArray(shopsData) && shopsData.length > 0) {
         setShops(shopsData);
 
-        const targetShopId = selectedShop || shopsData[0].id;
+        // Get current shop ID from URL/session instead of defaulting to first shop
+        let targetShopId = selectedShop;
+        if (!targetShopId) {
+          targetShopId = await getCurrentShopId();
+        }
+
+        // If still no shop ID found, use first shop as fallback
+        if (!targetShopId && shopsData.length > 0) {
+          targetShopId = shopsData[0].id;
+          console.log('No shop detected from URL, using first shop as fallback:', targetShopId);
+        }
+
         console.log('Fetching stats for shop:', targetShopId);
 
         try {
