@@ -1,5 +1,6 @@
 // admin/src/App.jsx
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { useEffect } from 'react';
 import AppBridgeProvider from './components/AppBridgeProvider';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
@@ -14,8 +15,22 @@ import SystemSettings from './pages/SystemSettings';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import GDPRCompliance from './pages/GDPRCompliance';
+import './styles/embedded.css';
 
 function App() {
+  // Detect if we're in embedded mode and apply compact styles
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const shop = params.get('shop') || sessionStorage.getItem('shopify_shop');
+    const isEmbedded = shop || window.self !== window.top; // Has shop param or in iframe
+
+    if (isEmbedded) {
+      document.body.classList.add('embedded-app');
+    } else {
+      document.body.classList.remove('embedded-app');
+    }
+  }, []);
+
   return (
     <Router>
       <Routes>
