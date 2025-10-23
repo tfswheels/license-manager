@@ -232,13 +232,13 @@ function Products() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="page-header flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Products</h1>
           <p className="text-gray-500 mt-1">Manage products and their license pools</p>
         </div>
 
-        <div className="flex gap-3">
+        <div className="button-group flex gap-3">
           {shops.length > 1 && (
             <select
               value={selectedShop || ''}
@@ -266,7 +266,7 @@ function Products() {
 
       {/* Bulk Actions Bar */}
       {selectedProducts.size > 0 && (
-        <div className="bg-primary-50 border border-primary-200 rounded-lg p-4 flex items-center justify-between">
+        <div className="bulk-actions-bar bg-primary-50 border border-primary-200 rounded-lg p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="font-medium text-gray-900">
               {selectedProducts.size} product{selectedProducts.size !== 1 ? 's' : ''} selected
@@ -307,7 +307,8 @@ function Products() {
         </div>
       ) : (
         <>
-          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          {/* Desktop Table View */}
+          <div className="responsive-table bg-white border border-gray-200 rounded-lg overflow-hidden">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -439,8 +440,111 @@ function Products() {
             </table>
           </div>
 
+          {/* Mobile Card View */}
+          <div className="card-view">
+            {currentPageProducts.map((product) => {
+              const availableCount = product.available_licenses || 0;
+              const totalCount = product.total_licenses || 0;
+              const isLow = availableCount < 10 && totalCount > 0;
+              const isSelected = selectedProducts.has(product.id);
+              const defaultTemplate = templates.find(t => t.is_default);
+
+              return (
+                <div key={product.id} className={`product-card ${isSelected ? 'bg-primary-50' : ''}`}>
+                  <div className="card-header">
+                    <div className="flex-1">
+                      <div className="card-title">{product.product_name}</div>
+                      <div className="card-subtitle">ID: {product.shopify_product_id}</div>
+                    </div>
+                    <button
+                      onClick={() => toggleProduct(product.id)}
+                      className="card-checkbox"
+                    >
+                      {isSelected ? (
+                        <CheckSquare className="w-5 h-5 text-primary-600" />
+                      ) : (
+                        <Square className="w-5 h-5 text-gray-400" />
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="card-body">
+                    <div className="card-field">
+                      <div className="card-label">Shop</div>
+                      <div className="card-value">{product.shop_domain || 'Unknown'}</div>
+                    </div>
+                    <div className="card-field">
+                      <div className="card-label">Price</div>
+                      <div className="card-value">${product.price ? parseFloat(product.price).toFixed(2) : '0.00'}</div>
+                    </div>
+                    <div className="card-field">
+                      <div className="card-label">Total Licenses</div>
+                      <div className="card-value">{totalCount}</div>
+                    </div>
+                    <div className="card-field">
+                      <div className="card-label">Available</div>
+                      <div className="card-value">
+                        <div className="flex items-center gap-2">
+                          {isLow && totalCount > 0 && (
+                            <AlertTriangle className="w-4 h-4 text-yellow-600" />
+                          )}
+                          <span className={isLow ? 'text-yellow-600' : 'text-green-600'}>
+                            {availableCount}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="card-field" style={{ gridColumn: '1 / -1' }}>
+                      <div className="card-label">Email Template</div>
+                      <select
+                        value={product.email_template_id || ''}
+                        onChange={(e) => handleTemplateChange(product.id, e.target.value)}
+                        className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 w-full"
+                      >
+                        <option value="">
+                          {defaultTemplate ? `${defaultTemplate.template_name} (Default)` : 'Default Template'}
+                        </option>
+                        {templates
+                          .filter(t => !t.is_default)
+                          .map((template) => (
+                            <option key={template.id} value={template.id}>
+                              {template.template_name}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="card-actions">
+                    <button
+                      onClick={() => handleManualSend(product)}
+                      className="btn-secondary"
+                    >
+                      <Send className="w-4 h-4 inline mr-1" />
+                      Send
+                    </button>
+                    <button
+                      onClick={() => navigate(`/products/${product.id}/licenses`)}
+                      className="btn-secondary"
+                    >
+                      <Upload className="w-4 h-4 inline mr-1" />
+                      Manage
+                    </button>
+                    <button
+                      onClick={() => handleDeleteClick(product)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
           {/* Pagination Controls */}
-          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-white rounded-b-lg">
+          <div className="pagination-controls flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-white rounded-b-lg">
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-600">
                 Showing {startIndex + 1}-{Math.min(endIndex, products.length)} of {products.length}

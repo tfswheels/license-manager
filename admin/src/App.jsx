@@ -16,6 +16,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import GDPRCompliance from './pages/GDPRCompliance';
 import './styles/embedded.css';
+import './styles/responsive.css';
 
 function App() {
   // Detect if we're in embedded mode and apply compact styles

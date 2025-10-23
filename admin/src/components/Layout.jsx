@@ -1,9 +1,11 @@
 // admin/src/components/Layout.jsx
+import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Package, ShoppingCart, Key, Mail, Settings, GitBranch } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, Key, Mail, Settings, GitBranch, Menu, X } from 'lucide-react';
 
 function Layout({ children }) {
   const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -21,8 +23,23 @@ function Layout({ children }) {
 
   return (
     <div className="min-h-screen flex">
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        className="mobile-menu-button"
+        aria-label="Toggle menu"
+      >
+        {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+      </button>
+
+      {/* Mobile Overlay */}
+      <div
+        className={`mobile-overlay ${mobileMenuOpen ? 'active' : ''}`}
+        onClick={() => setMobileMenuOpen(false)}
+      />
+
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
+      <aside className={`w-64 bg-white border-r border-gray-200 flex flex-col ${mobileMenuOpen ? 'mobile-open' : ''}`}>
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center gap-2">
             <Key className="w-8 h-8 text-blue-600" />
@@ -42,10 +59,11 @@ function Layout({ children }) {
               <Link
                 key={item.name}
                 to={item.href}
+                onClick={() => setMobileMenuOpen(false)}
                 className={`
                   flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200
-                  ${active 
-                    ? 'bg-blue-50 text-blue-700 font-medium shadow-sm' 
+                  ${active
+                    ? 'bg-blue-50 text-blue-700 font-medium shadow-sm'
                     : 'text-gray-700 hover:bg-gray-100'
                   }
                 `}
