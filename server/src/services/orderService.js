@@ -11,7 +11,7 @@ export async function processOrder(shopDomain, orderData) {
     await connection.beginTransaction();
 
     const [shops] = await connection.execute(
-      'SELECT id FROM shops WHERE shop_domain = ?',
+      'SELECT id, access_token FROM shops WHERE shop_domain = ?',
       [shopDomain]
     );
 
@@ -20,6 +20,7 @@ export async function processOrder(shopDomain, orderData) {
     }
 
     const shopId = shops[0].id;
+    const accessToken = shops[0].access_token;
 
     // Get shop settings for this order
     const settings = await getShopSettings(shopId);
@@ -93,7 +94,9 @@ export async function processOrder(shopDomain, orderData) {
           productName: lineItem.title,
           productId: dbProductId,
           licenses: licenses.map(l => l.license_key),
-          settings
+          settings,
+          shopDomain,
+          accessToken
         });
 
         await connection.execute(
@@ -134,7 +137,9 @@ export async function processOrder(shopDomain, orderData) {
             productId: dbProductId,
             licenses: [],
             settings,
-            placeholder: settings.out_of_stock_placeholder
+            placeholder: settings.out_of_stock_placeholder,
+            shopDomain,
+            accessToken
           });
 
           await connection.execute(
@@ -300,9 +305,17 @@ export async function manualAllocate(orderId) {
       return { success: true, message: 'All licenses already allocated' };
     }
 
-    // Get shop settings
+    // Get shop settings and access token for email
     const shopId = orderItems[0].shop_id;
     const settings = await getShopSettings(shopId);
+
+    const [shops] = await connection.execute(
+      'SELECT shop_domain, access_token FROM shops WHERE id = ?',
+      [shopId]
+    );
+
+    const shopDomain = shops[0]?.shop_domain;
+    const accessToken = shops[0]?.access_token;
 
     for (const item of orderItems) {
       const needed = item.quantity - item.licenses_allocated;
@@ -334,7 +347,9 @@ export async function manualAllocate(orderId) {
           productName: item.product_name,
           productId: item.product_id,
           licenses: licenses.map(l => l.license_key),
-          settings
+          settings,
+          shopDomain,
+          accessToken
         });
 
         await connection.execute(

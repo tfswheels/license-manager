@@ -7,6 +7,41 @@ dotenv.config();
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
+/**
+ * Fetch shop email from Shopify API
+ */
+async function getShopEmail(shopDomain, accessToken) {
+  try {
+    const query = `
+      query {
+        shop {
+          email
+        }
+      }
+    `;
+
+    const response = await fetch(`https://${shopDomain}/admin/api/2024-01/graphql.json`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': accessToken
+      },
+      body: JSON.stringify({ query })
+    });
+
+    if (!response.ok) {
+      console.error('Failed to fetch shop email:', response.status);
+      return null;
+    }
+
+    const result = await response.json();
+    return result.data?.shop?.email || null;
+  } catch (error) {
+    console.error('Error fetching shop email:', error);
+    return null;
+  }
+}
+
 export async function sendLicenseEmail({
   email,
   firstName,
@@ -16,7 +51,9 @@ export async function sendLicenseEmail({
   productId,
   licenses,
   settings = null,
-  placeholder = null
+  placeholder = null,
+  shopDomain = null,
+  accessToken = null
 }) {
   try {
     // Get template for this product
@@ -57,8 +94,8 @@ export async function sendLicenseEmail({
     const subject = renderTemplate(template.email_subject, variables);
 
     // Determine sender (use custom if configured, otherwise use defaults)
-    const fromEmail = settings?.custom_sender_email || process.env.FROM_EMAIL;
-    const fromName = settings?.custom_sender_name || process.env.FROM_NAME;
+    const fromEmail = settings?.custom_sender_email || process.env.FROM_EMAIL || 'mail@digikeyhq.com';
+    const fromName = settings?.custom_sender_name || process.env.FROM_NAME || 'DigiKey HQ';
 
     const msg = {
       to: email,
@@ -71,10 +108,25 @@ export async function sendLicenseEmail({
       html: htmlContent
     };
 
-    // Add reply-to if configured (for SaaS multi-tenant setup)
-    if (settings?.reply_to_email) {
-      msg.replyTo = settings.reply_to_email;
+    // Determine reply-to email
+    // Priority: 1. User settings, 2. Shop email, 3. From email
+    let replyToEmail = settings?.reply_to_email;
+
+    if (!replyToEmail && shopDomain && accessToken) {
+      // Fetch shop email from Shopify API to use as default reply-to
+      const shopEmail = await getShopEmail(shopDomain, accessToken);
+      if (shopEmail) {
+        replyToEmail = shopEmail;
+        console.log(`📧 Using shop email as reply-to: ${shopEmail}`);
+      }
     }
+
+    // If no reply-to found, use from email
+    if (!replyToEmail) {
+      replyToEmail = fromEmail;
+    }
+
+    msg.replyTo = replyToEmail;
 
     await sgMail.send(msg);
     console.log(`✅ Email sent to ${email} using template: ${template.template_name} from ${fromEmail}`);
@@ -95,8 +147,8 @@ export async function sendInventoryAlert({ productName, availableCount, threshol
     const msg = {
       to: process.env.ADMIN_EMAIL,
       from: {
-        email: process.env.FROM_EMAIL,
-        name: process.env.FROM_NAME
+        email: process.env.FROM_EMAIL || 'mail@digikeyhq.com',
+        name: process.env.FROM_NAME || 'DigiKey HQ'
       },
       subject: `⚠️ Low Inventory Alert: ${productName}`,
       text: `
@@ -148,8 +200,8 @@ export async function sendNotificationEmail({ to, subject, message }) {
     const msg = {
       to: to,
       from: {
-        email: process.env.FROM_EMAIL,
-        name: process.env.FROM_NAME || 'License Manager'
+        email: process.env.FROM_EMAIL || 'mail@digikeyhq.com',
+        name: process.env.FROM_NAME || 'DigiKey HQ'
       },
       subject: subject,
       text: message,

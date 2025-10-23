@@ -1128,11 +1128,11 @@ router.post('/orders/:orderId/resend', async (req, res) => {
   try {
     const { orderId } = req.params;
 
-    // Get order details
+    // Get order details with shop info
     const [orders] = await db.execute(
-      `SELECT o.*, s.shop_domain 
-       FROM orders o 
-       JOIN shops s ON o.shop_id = s.id 
+      `SELECT o.*, s.shop_domain, s.access_token
+       FROM orders o
+       JOIN shops s ON o.shop_id = s.id
        WHERE o.id = ?`,
       [orderId]
     );
@@ -1142,6 +1142,8 @@ router.post('/orders/:orderId/resend', async (req, res) => {
     }
 
     const order = orders[0];
+    const shopDomain = order.shop_domain;
+    const accessToken = order.access_token;
 
     // Load shop settings for email customization
     const settings = await getShopSettings(order.shop_id);
@@ -1179,7 +1181,9 @@ router.post('/orders/:orderId/resend', async (req, res) => {
           productName: item.product_name,
           productId: item.product_id,
           licenses: licenses.map(l => l.license_key),
-          settings
+          settings,
+          shopDomain,
+          accessToken
         });
 
         // Log the resend
@@ -1231,9 +1235,9 @@ router.post('/orders/manual-send', async (req, res) => {
 
     await connection.beginTransaction();
 
-    // Get product details and verify it exists
+    // Get product details and shop info
     const [products] = await connection.execute(
-      'SELECT p.*, s.id as shop_id FROM products p JOIN shops s ON p.shop_id = s.id WHERE p.id = ?',
+      'SELECT p.*, s.id as shop_id, s.shop_domain, s.access_token FROM products p JOIN shops s ON p.shop_id = s.id WHERE p.id = ?',
       [productId]
     );
 
@@ -1243,6 +1247,8 @@ router.post('/orders/manual-send', async (req, res) => {
     }
 
     const product = products[0];
+    const shopDomain = product.shop_domain;
+    const accessToken = product.access_token;
 
     // Load shop settings for email customization
     const settings = await getShopSettings(product.shop_id);
@@ -1336,7 +1342,9 @@ router.post('/orders/manual-send', async (req, res) => {
       productName: product.product_name,
       productId: productId,
       licenses: availableLicenses.map(l => l.license_key),
-      settings
+      settings,
+      shopDomain,
+      accessToken
     });
 
     // Log email
