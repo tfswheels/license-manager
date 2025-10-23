@@ -1,6 +1,41 @@
 import db from '../config/database.js';
 
 /**
+ * Fetch shop email from Shopify API
+ */
+async function fetchShopEmail(shopDomain, accessToken) {
+  try {
+    const query = `
+      query {
+        shop {
+          email
+        }
+      }
+    `;
+
+    const response = await fetch(`https://${shopDomain}/admin/api/2024-01/graphql.json`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': accessToken
+      },
+      body: JSON.stringify({ query })
+    });
+
+    if (!response.ok) {
+      console.error('Failed to fetch shop email:', response.status);
+      return null;
+    }
+
+    const result = await response.json();
+    return result.data?.shop?.email || null;
+  } catch (error) {
+    console.error('Error fetching shop email:', error);
+    return null;
+  }
+}
+
+/**
  * Get settings for a shop (creates default if not exists)
  * @param {number} shopId - Shop ID
  * @returns {Promise<Object>} Settings object
@@ -12,10 +47,26 @@ async function getShopSettings(shopId) {
   );
 
   if (rows.length === 0) {
-    // Create default settings if they don't exist
-    await db.query(
-      'INSERT INTO shop_settings (shop_id) VALUES (?)',
+    // Get shop info to fetch email
+    const [shops] = await db.query(
+      'SELECT shop_domain, access_token FROM shops WHERE id = ?',
       [shopId]
+    );
+
+    let defaultReplyTo = null;
+    if (shops.length > 0 && shops[0].access_token) {
+      // Fetch shop email from Shopify to pre-populate reply_to_email
+      const shopEmail = await fetchShopEmail(shops[0].shop_domain, shops[0].access_token);
+      if (shopEmail) {
+        defaultReplyTo = shopEmail;
+        console.log(`📧 Pre-populated reply-to email for shop ${shopId}: ${shopEmail}`);
+      }
+    }
+
+    // Create default settings with shop email as reply_to
+    await db.query(
+      'INSERT INTO shop_settings (shop_id, reply_to_email) VALUES (?, ?)',
+      [shopId, defaultReplyTo]
     );
 
     // Fetch the newly created settings
