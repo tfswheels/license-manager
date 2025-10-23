@@ -1,16 +1,17 @@
 // admin/src/pages/Templates.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Mail, 
-  Plus, 
-  Edit2, 
-  Trash2, 
-  Star, 
+import {
+  Mail,
+  Plus,
+  Edit2,
+  Trash2,
+  Star,
   Package,
   AlertCircle
 } from 'lucide-react';
 import api from '../utils/api';
+import { getCurrentShopId } from '../utils/shopUtils';
 
 export default function Templates() {
   const navigate = useNavigate();
@@ -26,7 +27,12 @@ export default function Templates() {
   const loadTemplates = async () => {
     try {
       setLoading(true);
-      const shopId = localStorage.getItem('currentShopId') || 1;
+      const shopId = await getCurrentShopId();
+      if (!shopId) {
+        console.error('No shop ID found');
+        setTemplates([]);
+        return;
+      }
       const response = await api.get(`/api/admin/templates?shopId=${shopId}`);
       setTemplates(response.data);
     } catch (error) {

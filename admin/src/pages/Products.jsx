@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Upload, Send, Package, AlertTriangle, Trash2, CheckSquare, Square, ChevronLeft, ChevronRight, Mail } from 'lucide-react';
 import { adminAPI } from '../utils/api';
+import { getCurrentShopId } from '../utils/shopUtils';
 import ProductSelector from '../components/ProductSelector';
 import ManualSendModal from '../components/ManualSendModal';
 
@@ -31,8 +32,13 @@ function Products() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const shopId = selectedShop || localStorage.getItem('currentShopId') || 1;
-      
+
+      // Get current shop ID from URL/session, never default to 1
+      let shopId = selectedShop;
+      if (!shopId) {
+        shopId = await getCurrentShopId();
+      }
+
       const [productsRes, shopsRes, templatesRes] = await Promise.all([
         adminAPI.getProducts(selectedShop),
         adminAPI.getShops(),

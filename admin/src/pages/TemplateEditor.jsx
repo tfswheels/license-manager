@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Save, X, Eye, Code, AlertTriangle, CheckCircle } from 'lucide-react';
 import api from '../utils/api';
+import { getCurrentShopId } from '../utils/shopUtils';
 
 const SAMPLE_DATA = {
   first_name: 'John',
@@ -108,7 +109,11 @@ export default function TemplateEditor() {
 
     try {
       setSaving(true);
-      const shopId = localStorage.getItem('currentShopId') || 1;
+      const shopId = await getCurrentShopId();
+      if (!shopId) {
+        alert('Could not determine current shop. Please reload the page.');
+        return;
+      }
 
       const payload = {
         shopId: parseInt(shopId),
