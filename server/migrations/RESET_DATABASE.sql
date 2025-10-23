@@ -205,7 +205,7 @@ CREATE TABLE shop_settings (
 
   -- Out of Stock Settings
   out_of_stock_behavior ENUM('no_email', 'send_placeholder') DEFAULT 'no_email',
-  out_of_stock_placeholder TEXT DEFAULT 'Your license keys will be sent separately once available.',
+  out_of_stock_placeholder TEXT COMMENT 'Default: Your license keys will be sent separately once available.',
 
   -- Email Settings (SaaS Multi-tenant)
   custom_sender_email VARCHAR(255) DEFAULT NULL COMMENT 'Custom from email (requires domain verification)',

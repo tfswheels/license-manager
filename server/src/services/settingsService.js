@@ -63,10 +63,11 @@ async function getShopSettings(shopId) {
       }
     }
 
-    // Create default settings with shop email as reply_to
+    // Create default settings with shop email as reply_to and default placeholder
+    const defaultPlaceholder = 'Your license keys will be sent separately once available.';
     await db.query(
-      'INSERT INTO shop_settings (shop_id, reply_to_email) VALUES (?, ?)',
-      [shopId, defaultReplyTo]
+      'INSERT INTO shop_settings (shop_id, reply_to_email, out_of_stock_placeholder) VALUES (?, ?, ?)',
+      [shopId, defaultReplyTo, defaultPlaceholder]
     );
 
     // Fetch the newly created settings
@@ -77,7 +78,13 @@ async function getShopSettings(shopId) {
     return newRows[0];
   }
 
-  return rows[0];
+  // Apply default placeholder if null
+  const settings = rows[0];
+  if (!settings.out_of_stock_placeholder) {
+    settings.out_of_stock_placeholder = 'Your license keys will be sent separately once available.';
+  }
+
+  return settings;
 }
 
 /**
