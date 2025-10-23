@@ -15,6 +15,7 @@ import SystemSettings from './pages/SystemSettings';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import GDPRCompliance from './pages/GDPRCompliance';
+import Documentation from './pages/Documentation';
 import './styles/embedded.css';
 import './styles/responsive.css';
 
@@ -39,6 +40,7 @@ function App() {
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms-of-service" element={<TermsOfService />} />
         <Route path="/gdpr-compliance" element={<GDPRCompliance />} />
+        <Route path="/documentation" element={<Documentation />} />
 
         {/* Protected Admin Routes - Require Shopify authentication */}
         <Route path="/*" element={

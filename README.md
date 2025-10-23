@@ -8,10 +8,11 @@ A complete digital license distribution system for Shopify stores. Automatically
 
 ## 🎯 Project Overview
 
-**Status:** 🟢 **SHOPIFY APP STORE READY**
+**Status:** 🟢 **READY FOR SHOPIFY APP STORE SUBMISSION**
 **Deployed:** October 2025
 **Website:** https://digikeyhq.com
 **API:** https://api.digikeyhq.com
+**Documentation:** https://digikeyhq.com/documentation
 
 ### Tech Stack
 - **Backend:** Node.js, Express, MySQL, Shopify API, SendGrid
@@ -410,8 +411,12 @@ VITE_API_URL=https://api.digikeyhq.com
 
 ## 📚 Documentation
 
+- **[Documentation Portal](https://digikeyhq.com/documentation)** - Complete user guide with setup, features, troubleshooting, and FAQs
 - **[SHOPIFY_INTEGRATION.md](./SHOPIFY_INTEGRATION.md)** - Complete Shopify App Store submission guide
 - **[DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md)** - Step-by-step deployment instructions
+- **[Privacy Policy](https://digikeyhq.com/privacy-policy)** - GDPR-compliant privacy policy
+- **[Terms of Service](https://digikeyhq.com/terms-of-service)** - App terms and conditions
+- **[GDPR Compliance](https://digikeyhq.com/gdpr-compliance)** - Data protection and compliance information
 
 ---
 
