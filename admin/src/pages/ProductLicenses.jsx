@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, Trash2, RotateCcw, FileText, FileSpreadsheet } from 'lucide-react';
+import { ArrowLeft, Upload, Trash2, RotateCcw, FileText, FileSpreadsheet, Edit3 } from 'lucide-react';
 import { adminAPI } from '../utils/api';
 import * as XLSX from 'xlsx';
 
@@ -15,6 +15,8 @@ function ProductLicenses() {
   const [uploading, setUploading] = useState(false);
   const [filter, setFilter] = useState('all'); // all, available, allocated
   const [fileName, setFileName] = useState('');
+  const [entryMode, setEntryMode] = useState('file'); // 'file' or 'manual'
+  const [manualInput, setManualInput] = useState('');
 
   useEffect(() => {
     loadData();
@@ -126,6 +128,23 @@ function ProductLicenses() {
     }
   };
 
+  const handleManualEntry = () => {
+    // Parse manual input (one license per line)
+    const licenses = manualInput
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
+
+    if (licenses.length === 0) {
+      alert('Please enter at least one license key');
+      return;
+    }
+
+    setParsedLicenses(licenses);
+    setFileName('Manual Entry');
+    setShowUpload(true);
+  };
+
   const handleUploadLicenses = async () => {
     if (parsedLicenses.length === 0) return;
 
@@ -136,6 +155,7 @@ function ProductLicenses() {
       setShowUpload(false);
       setParsedLicenses([]);
       setFileName('');
+      setManualInput('');
       await loadData();
     } catch (error) {
       console.error('Upload failed:', error);
@@ -214,25 +234,53 @@ function ProductLicenses() {
 
       {/* Upload Section */}
       <div className="card">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Upload Licenses</h2>
-        
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Add Licenses</h2>
+
         {!showUpload ? (
           <div>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-              <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600 mb-4">
-                Upload a CSV or Excel file with license keys
-              </p>
-              <label className="btn-primary cursor-pointer inline-block">
-                <input
-                  type="file"
-                  accept=".csv,.xlsx,.xls"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-                Choose File
-              </label>
+            {/* Mode Selector */}
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => setEntryMode('file')}
+                className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors ${
+                  entryMode === 'file'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <Upload className="w-5 h-5 inline mr-2" />
+                Upload File
+              </button>
+              <button
+                onClick={() => setEntryMode('manual')}
+                className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors ${
+                  entryMode === 'manual'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <Edit3 className="w-5 h-5 inline mr-2" />
+                Manual Entry
+              </button>
             </div>
+
+            {entryMode === 'file' ? (
+              <div>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                  <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 mb-4">
+                    Upload a CSV or Excel file with license keys
+                  </p>
+                  <label className="btn-primary cursor-pointer inline-block">
+                    <input
+                      type="file"
+                      accept=".csv,.xlsx,.xls"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    Choose File
+                  </label>
+                </div>
             
             <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* CSV Instructions */}
@@ -267,6 +315,51 @@ function ProductLicenses() {
                 </div>
               </div>
             </div>
+              </div>
+            ) : (
+              <div>
+                {/* Manual Entry */}
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Enter License Keys (one per line)
+                    </label>
+                    <textarea
+                      value={manualInput}
+                      onChange={(e) => setManualInput(e.target.value)}
+                      placeholder="ABC123-DEF456-GHI789&#10;JKL012-MNO345-PQR678&#10;STU901-VWX234-YZA567"
+                      rows={12}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm resize-none"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Enter each license key on a new line. Paste from Excel, CSV, or type manually.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={handleManualEntry}
+                    disabled={!manualInput.trim()}
+                    className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Preview Licenses
+                  </button>
+                </div>
+
+                {/* Instructions */}
+                <div className="mt-4 p-4 bg-purple-50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Edit3 className="w-5 h-5 text-purple-600" />
+                    <strong className="text-sm text-purple-800">Manual Entry Tips</strong>
+                  </div>
+                  <ul className="text-sm text-purple-800 space-y-1 list-disc list-inside">
+                    <li>Enter one license key per line</li>
+                    <li>You can paste from Excel or CSV files</li>
+                    <li>Empty lines will be ignored</li>
+                    <li>Leading and trailing spaces will be removed</li>
+                  </ul>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div>
@@ -306,6 +399,7 @@ function ProductLicenses() {
                   setShowUpload(false);
                   setParsedLicenses([]);
                   setFileName('');
+                  setManualInput('');
                 }}
                 className="btn-secondary"
               >
