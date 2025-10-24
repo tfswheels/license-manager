@@ -105,7 +105,9 @@ async function updateShopSettings(shopId, settings) {
     'enforce_unique_per_order',
     'notification_email',
     'notify_on_out_of_stock',
-    'notify_on_uniqueness_issue'
+    'notify_on_uniqueness_issue',
+    'low_stock_threshold',
+    'notify_on_low_stock'
   ];
 
   // Filter out any fields that aren't in the allowed list
@@ -194,12 +196,21 @@ function validateSettings(settings) {
     'enforce_unique_licenses',
     'enforce_unique_per_order',
     'notify_on_out_of_stock',
-    'notify_on_uniqueness_issue'
+    'notify_on_uniqueness_issue',
+    'notify_on_low_stock'
   ];
 
   for (const field of booleanFields) {
     if (settings.hasOwnProperty(field) && typeof settings[field] !== 'boolean') {
       throw new Error(`${field} must be a boolean value`);
+    }
+  }
+
+  // Validate low_stock_threshold
+  if (settings.hasOwnProperty('low_stock_threshold')) {
+    const threshold = parseInt(settings.low_stock_threshold);
+    if (isNaN(threshold) || threshold < 0) {
+      throw new Error('low_stock_threshold must be a non-negative number');
     }
   }
 }

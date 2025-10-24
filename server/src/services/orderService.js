@@ -111,7 +111,7 @@ export async function processOrder(shopDomain, orderData) {
           [orderItemId]
         );
 
-        await checkInventoryAlerts(connection, dbProductId);
+        await checkInventoryAlerts(connection, dbProductId, shopId);
 
         // Send notification if uniqueness caused partial allocation
         if (uniquenessIssue && settings.notify_on_uniqueness_issue && settings.notification_email) {

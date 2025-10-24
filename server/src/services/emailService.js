@@ -142,12 +142,17 @@ export async function sendLicenseEmail({
   }
 }
 
-export async function sendInventoryAlert({ productName, availableCount, threshold }) {
+export async function sendInventoryAlert({ productName, availableCount, threshold, toEmail }) {
   try {
+    if (!toEmail) {
+      console.error('No email address provided for inventory alert');
+      return;
+    }
+
     const msg = {
-      to: process.env.ADMIN_EMAIL,
+      to: toEmail,
       from: {
-        email: process.env.FROM_EMAIL || 'mail@digikeyhq.com',
+        email: process.env.SENDGRID_SENDER_EMAIL || 'mail@digikeyhq.com',
         name: process.env.FROM_NAME || 'DigiKey HQ'
       },
       subject: `⚠️ Low Inventory Alert: ${productName}`,

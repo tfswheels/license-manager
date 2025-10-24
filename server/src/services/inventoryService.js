@@ -1,23 +1,44 @@
 import db from '../config/database.js';
 import { sendInventoryAlert } from './emailService.js';
 
-export async function checkInventoryAlerts(connection, productId) {
+export async function checkInventoryAlerts(connection, productId, shopId) {
   try {
+    // Get shop settings for threshold and alert email
+    const [shopSettings] = await connection.execute(
+      `SELECT low_stock_threshold, notify_on_low_stock, notification_email
+       FROM shop_settings
+       WHERE shop_id = ?`,
+      [shopId]
+    );
+
+    // Skip if low stock alerts are disabled
+    if (shopSettings.length === 0 || !shopSettings[0].notify_on_low_stock) {
+      return;
+    }
+
+    const threshold = shopSettings[0].low_stock_threshold || 10;
+    const notificationEmail = shopSettings[0].notification_email;
+
+    // Skip if no notification email is configured
+    if (!notificationEmail) {
+      console.log(`⚠️ Low stock alerts enabled but no notification_email configured for shop ${shopId}`);
+      return;
+    }
+
     const [counts] = await connection.execute(
-      `SELECT COUNT(*) as available 
-       FROM licenses 
+      `SELECT COUNT(*) as available
+       FROM licenses
        WHERE product_id = ? AND allocated = FALSE`,
       [productId]
     );
 
     const availableCount = counts[0].available;
-    const threshold = parseInt(process.env.LOW_INVENTORY_THRESHOLD || '10');
 
     if (availableCount <= threshold) {
       const [recentAlerts] = await connection.execute(
-        `SELECT id FROM inventory_alerts 
-         WHERE product_id = ? 
-         AND alert_sent = TRUE 
+        `SELECT id FROM inventory_alerts
+         WHERE product_id = ?
+         AND alert_sent = TRUE
          AND alert_sent_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)`,
         [productId]
       );
@@ -34,17 +55,18 @@ export async function checkInventoryAlerts(connection, productId) {
           await sendInventoryAlert({
             productName,
             availableCount,
-            threshold
+            threshold,
+            toEmail: notificationEmail
           });
 
           await connection.execute(
-            `INSERT INTO inventory_alerts 
+            `INSERT INTO inventory_alerts
              (product_id, available_count, threshold, alert_sent, alert_sent_at)
              VALUES (?, ?, ?, TRUE, CURRENT_TIMESTAMP)`,
             [productId, availableCount, threshold]
           );
 
-          console.log(`⚠️ Low inventory alert sent for ${productName}`);
+          console.log(`⚠️ Low inventory alert sent for ${productName} to ${notificationEmail}`);
         }
       }
     }
