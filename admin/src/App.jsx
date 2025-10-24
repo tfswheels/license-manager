@@ -12,6 +12,7 @@ import Templates from './pages/Templates';
 import TemplateEditor from './pages/TemplateEditor';
 import TemplateRules from './pages/TemplateRules';
 import SystemSettings from './pages/SystemSettings';
+import Support from './pages/Support';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import GDPRCompliance from './pages/GDPRCompliance';
@@ -57,6 +58,7 @@ function App() {
                 <Route path="/templates/:id/edit" element={<TemplateEditor />} />
                 <Route path="/template-rules" element={<TemplateRules />} />
                 <Route path="/settings" element={<SystemSettings />} />
+                <Route path="/support" element={<Support />} />
               </Routes>
             </Layout>
           </AppBridgeProvider>

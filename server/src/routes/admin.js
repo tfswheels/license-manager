@@ -1478,4 +1478,114 @@ router.post('/shops/:shopId/settings/reset', async (req, res) => {
   }
 });
 
+// ==========================================
+// SUPPORT ENDPOINTS
+// ==========================================
+
+// Send support message
+router.post('/support/send', async (req, res) => {
+  try {
+    const { subject, message, email, shopId } = req.body;
+
+    if (!subject || !message || !email) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Get shop information
+    let shopDomain = 'Unknown';
+    if (shopId) {
+      const [shops] = await db.execute(
+        'SELECT shop_domain FROM shops WHERE id = ?',
+        [shopId]
+      );
+      if (shops.length > 0) {
+        shopDomain = shops[0].shop_domain;
+      }
+    }
+
+    // Map subject values to readable text
+    const subjectMap = {
+      'setup': 'Help with setup',
+      'bug': 'Report Issue/Bug',
+      'feature': 'Request new feature',
+      'other': 'Other'
+    };
+    const subjectText = subjectMap[subject] || subject;
+
+    // Create support email using SendGrid
+    const sgMail = require('@sendgrid/mail');
+    const sendgridApiKey = process.env.SENDGRID_API_KEY;
+
+    if (!sendgridApiKey) {
+      console.error('SendGrid API key not configured');
+      return res.status(500).json({ error: 'Email service not configured' });
+    }
+
+    sgMail.setApiKey(sendgridApiKey);
+
+    const emailContent = {
+      to: 'mail@digikeyhq.com',
+      from: process.env.SENDGRID_SENDER_EMAIL || 'noreply@digikeyhq.com',
+      replyTo: email,
+      subject: `DigiKey HQ Support: ${subjectText}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 10px;">
+            Support Request from DigiKey HQ
+          </h2>
+
+          <div style="margin: 20px 0; padding: 15px; background-color: #f3f4f6; border-radius: 8px;">
+            <p style="margin: 5px 0;"><strong>From:</strong> ${email}</p>
+            <p style="margin: 5px 0;"><strong>Shop:</strong> ${shopDomain}</p>
+            <p style="margin: 5px 0;"><strong>Subject:</strong> ${subjectText}</p>
+          </div>
+
+          <div style="margin: 20px 0;">
+            <h3 style="color: #374151; margin-bottom: 10px;">Message:</h3>
+            <div style="padding: 15px; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; white-space: pre-wrap;">
+${message}
+            </div>
+          </div>
+
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 12px;">
+            <p>This email was sent from the DigiKey HQ support form.</p>
+            <p>Reply to this email to respond to the customer directly at ${email}</p>
+          </div>
+        </div>
+      `,
+      text: `
+Support Request from DigiKey HQ
+
+From: ${email}
+Shop: ${shopDomain}
+Subject: ${subjectText}
+
+Message:
+${message}
+
+---
+This email was sent from the DigiKey HQ support form.
+Reply to this email to respond to the customer directly.
+      `
+    };
+
+    await sgMail.send(emailContent);
+
+    console.log('Support email sent successfully:', {
+      to: 'mail@digikeyhq.com',
+      from: email,
+      subject: subjectText,
+      shop: shopDomain
+    });
+
+    res.json({
+      success: true,
+      message: 'Support message sent successfully'
+    });
+  } catch (error) {
+    console.error('Error sending support message:', error);
+    res.status(500).json({ error: 'Failed to send support message' });
+  }
+});
+
 export default router;

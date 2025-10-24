@@ -97,6 +97,9 @@ export const adminAPI = {
     api.put(`/api/admin/shops/${shopId}/settings`, settings),
   resetShopSettings: (shopId) =>
     api.post(`/api/admin/shops/${shopId}/settings/reset`),
+
+  // Support
+  sendSupportMessage: (data) => api.post('/api/admin/support/send', data),
 };
 
 export default api;

@@ -1,7 +1,7 @@
 // admin/src/components/Layout.jsx
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Package, ShoppingCart, Key, Mail, Settings, GitBranch, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, Key, Mail, Settings, GitBranch, Menu, X, HelpCircle } from 'lucide-react';
 import OnboardingChecklist from './OnboardingChecklist';
 
 function Layout({ children }) {
@@ -15,6 +15,7 @@ function Layout({ children }) {
     { name: 'Templates', href: '/templates', icon: Mail },
     { name: 'Template Rules', href: '/template-rules', icon: GitBranch },
     { name: 'Settings', href: '/settings', icon: Settings },
+    { name: 'Support', href: '/support', icon: HelpCircle },
   ];
 
   const isActive = (href) => {
