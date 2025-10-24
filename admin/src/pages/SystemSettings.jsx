@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Settings, Save, RotateCcw, AlertCircle, Mail, Key, Bell } from 'lucide-react';
 import { adminAPI } from '../utils/api';
+import { getCurrentShopId } from '../utils/shopUtils';
 
 export default function SystemSettings() {
-  const [shops, setShops] = useState([]);
-  const [selectedShop, setSelectedShop] = useState(null);
+  const [shopId, setShopId] = useState(null);
   const [settings, setSettings] = useState(null);
   const [originalSettings, setOriginalSettings] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -18,33 +18,24 @@ export default function SystemSettings() {
   };
 
   useEffect(() => {
-    loadShops();
+    loadSettings();
   }, []);
-
-  useEffect(() => {
-    if (selectedShop) {
-      loadSettings();
-    }
-  }, [selectedShop]);
-
-  const loadShops = async () => {
-    try {
-      const response = await adminAPI.getShops();
-      const shopsData = response.data || response;
-      setShops(shopsData);
-      if (shopsData.length > 0) {
-        setSelectedShop(shopsData[0].id);
-      }
-    } catch (error) {
-      console.error('Failed to load shops:', error);
-      showMessage('error', 'Failed to load shops');
-    }
-  };
 
   const loadSettings = async () => {
     setLoading(true);
     try {
-      const response = await adminAPI.getShopSettings(selectedShop);
+      // Get current shop ID from URL/session
+      const currentShopId = await getCurrentShopId();
+      if (!currentShopId) {
+        console.error('No shop ID found');
+        showMessage('error', 'Unable to determine current shop');
+        setLoading(false);
+        return;
+      }
+
+      setShopId(currentShopId);
+
+      const response = await adminAPI.getShopSettings(currentShopId);
       const settingsData = response.data || response;
 
       // Convert MySQL TINYINT (0/1) to proper booleans
@@ -67,9 +58,14 @@ export default function SystemSettings() {
   };
 
   const handleSave = async () => {
+    if (!shopId) {
+      showMessage('error', 'No shop ID available');
+      return;
+    }
+
     setSaving(true);
     try {
-      await adminAPI.updateShopSettings(selectedShop, settings);
+      await adminAPI.updateShopSettings(shopId, settings);
       setOriginalSettings(JSON.parse(JSON.stringify(settings))); // Update original after save
       showMessage('success', 'Settings saved successfully!');
     } catch (error) {
@@ -81,13 +77,18 @@ export default function SystemSettings() {
   };
 
   const handleReset = async () => {
+    if (!shopId) {
+      showMessage('error', 'No shop ID available');
+      return;
+    }
+
     if (!confirm('Are you sure you want to reset all settings to defaults?')) {
       return;
     }
 
     setSaving(true);
     try {
-      const response = await adminAPI.resetShopSettings(selectedShop);
+      const response = await adminAPI.resetShopSettings(shopId);
       const resetSettings = response.data?.settings || response.settings;
 
       // Convert MySQL TINYINT (0/1) to proper booleans
@@ -172,26 +173,6 @@ export default function SystemSettings() {
             </button>
           </div>
         </div>
-
-        {/* Shop Selector */}
-        {shops.length > 1 && (
-          <div className="mt-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Shop
-            </label>
-            <select
-              value={selectedShop || ''}
-              onChange={(e) => setSelectedShop(parseInt(e.target.value))}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              {shops.map(shop => (
-                <option key={shop.id} value={shop.id}>
-                  {shop.shop_domain}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
       </div>
 
       {/* Message Banner */}

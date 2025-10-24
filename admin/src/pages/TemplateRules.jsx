@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Settings as SettingsIcon, Plus, Trash2, Save, Play, Tag } from 'lucide-react';
 import { adminAPI } from '../utils/api';
+import { getCurrentShopId } from '../utils/shopUtils';
 
 export default function TemplateRules() {
-  const [shops, setShops] = useState([]);
-  const [selectedShop, setSelectedShop] = useState(null);
+  const [shopId, setShopId] = useState(null);
   const [templates, setTemplates] = useState([]);
   const [rules, setRules] = useState([]);
   const [exclusionTag, setExclusionTag] = useState('');
@@ -24,51 +24,31 @@ export default function TemplateRules() {
     loadData();
   }, []);
 
-  useEffect(() => {
-    if (selectedShop) {
-      loadShopData();
-    }
-  }, [selectedShop]);
-
   const loadData = async () => {
-    try {
-      const response = await adminAPI.getShops();
-      const shopsData = response.data || response;
-      console.log('Shops loaded:', shopsData);
-      setShops(shopsData);
-      if (shopsData.length > 0) {
-        console.log('Setting selected shop to:', shopsData[0].id);
-        setSelectedShop(shopsData[0].id);
-      } else {
-        console.warn('No shops found');
-        setLoading(false);
-      }
-    } catch (error) {
-      console.error('Failed to load shops:', error);
-      alert('Failed to load shops. Check console.');
-      setLoading(false);
-    }
-  };
-
-  const loadShopData = async () => {
-    if (!selectedShop) {
-      setLoading(false);
-      return;
-    }
-    
     setLoading(true);
     try {
+      // Get current shop ID from URL/session
+      const currentShopId = await getCurrentShopId();
+      if (!currentShopId) {
+        console.error('No shop ID found');
+        alert('Unable to determine current shop. Please reload the app.');
+        setLoading(false);
+        return;
+      }
+
+      setShopId(currentShopId);
+
       const [templatesData, rulesData, exclusionData] = await Promise.all([
-        adminAPI.getTemplates(selectedShop),
-        adminAPI.getTemplateRules(selectedShop),
-        adminAPI.getExclusionTag(selectedShop)
+        adminAPI.getTemplates(currentShopId),
+        adminAPI.getTemplateRules(currentShopId),
+        adminAPI.getExclusionTag(currentShopId)
       ]);
-      
+
       setTemplates(templatesData.data || templatesData);
       setRules(rulesData.data || rulesData);
       setExclusionTag(exclusionData.data?.exclusion_tag || exclusionData.exclusion_tag || '');
     } catch (error) {
-      console.error('Failed to load shop data:', error);
+      console.error('Failed to load data:', error);
       alert('Failed to load settings data. Check console for details.');
     } finally {
       setLoading(false);
@@ -82,7 +62,7 @@ export default function TemplateRules() {
     }
 
     try {
-      await adminAPI.createTemplateRule(selectedShop, {
+      await adminAPI.createTemplateRule(shopId, {
         template_id: newRule.template_id,
         rule_type: 'tag', // Always tag
         rule_value: newRule.rule_value.trim(),
@@ -101,7 +81,7 @@ export default function TemplateRules() {
       if (confirm('Rule created! Apply this rule to existing products now?')) {
         setApplying(true);
         try {
-          const response = await adminAPI.applyTemplateRules(selectedShop);
+          const response = await adminAPI.applyTemplateRules(shopId);
           const result = response.data || response;
           alert(`Rules applied!\n\n${result.applied || 0} products updated\n${result.skipped || 0} products skipped\n${result.errors || 0} errors`);
         } catch (error) {
@@ -112,7 +92,7 @@ export default function TemplateRules() {
         }
       }
 
-      loadShopData();
+      loadData();
     } catch (error) {
       console.error('Failed to create rule:', error);
       alert('Failed to create rule');
@@ -123,9 +103,9 @@ export default function TemplateRules() {
     if (!confirm('Are you sure you want to delete this rule?')) return;
 
     try {
-      await adminAPI.deleteTemplateRule(selectedShop, ruleId);
+      await adminAPI.deleteTemplateRule(shopId, ruleId);
       alert('Rule deleted');
-      loadShopData();
+      loadData();
     } catch (error) {
       console.error('Failed to delete rule:', error);
       alert('Failed to delete rule');
@@ -134,10 +114,10 @@ export default function TemplateRules() {
 
   const handleToggleRule = async (ruleId, currentStatus) => {
     try {
-      await adminAPI.updateTemplateRule(selectedShop, ruleId, {
+      await adminAPI.updateTemplateRule(shopId, ruleId, {
         is_active: !currentStatus
       });
-      loadShopData();
+      loadData();
     } catch (error) {
       console.error('Failed to toggle rule:', error);
       alert('Failed to update rule');
@@ -146,7 +126,7 @@ export default function TemplateRules() {
 
   const handleSaveExclusionTag = async () => {
     try {
-      await adminAPI.setExclusionTag(selectedShop, exclusionTag);
+      await adminAPI.setExclusionTag(shopId, exclusionTag);
       alert('Exclusion tag saved');
     } catch (error) {
       console.error('Failed to save exclusion tag:', error);
@@ -164,7 +144,7 @@ export default function TemplateRules() {
       const response = await adminAPI.applyTemplateRules(selectedShop);
       const result = response.data || response;
       alert(`Rules applied!\n\n${result.applied || 0} products updated\n${result.skipped || 0} products skipped\n${result.errors || 0} errors`);
-      loadShopData();
+      loadData();
     } catch (error) {
       console.error('Failed to apply rules:', error);
       alert('Failed to apply rules');
@@ -194,25 +174,9 @@ export default function TemplateRules() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-          <p className="text-gray-500 mt-1">Configure template assignment rules and preferences</p>
-        </div>
-
-        {shops.length > 1 && (
-          <select
-            value={selectedShop || ''}
-            onChange={(e) => setSelectedShop(e.target.value || null)}
-            className="input w-64"
-          >
-            {shops.map((shop) => (
-              <option key={shop.id} value={shop.id}>
-                {shop.shop_domain}
-              </option>
-            ))}
-          </select>
-        )}
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Template Rules</h1>
+        <p className="text-gray-500 mt-1">Configure template assignment rules and preferences</p>
       </div>
 
       {/* Exclusion Tag Section */}

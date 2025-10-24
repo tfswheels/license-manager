@@ -9,9 +9,8 @@ import ManualSendModal from '../components/ManualSendModal';
 function Products() {
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
-  const [shops, setShops] = useState([]);
   const [templates, setTemplates] = useState([]);
-  const [selectedShop, setSelectedShop] = useState(null);
+  const [shopId, setShopId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showSelector, setShowSelector] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -27,33 +26,30 @@ function Products() {
 
   useEffect(() => {
     loadData();
-  }, [selectedShop]);
+  }, []);
 
   const loadData = async () => {
     try {
       setLoading(true);
 
-      // Get current shop ID from URL/session, never default to 1
-      let shopId = selectedShop;
-      if (!shopId) {
-        shopId = await getCurrentShopId();
+      // Get current shop ID from URL/session
+      const currentShopId = await getCurrentShopId();
+      if (!currentShopId) {
+        console.error('No shop ID found');
+        setLoading(false);
+        return;
       }
 
-      const [productsRes, shopsRes, templatesRes] = await Promise.all([
-        adminAPI.getProducts(selectedShop),
-        adminAPI.getShops(),
-        adminAPI.getTemplates(shopId),
+      setShopId(currentShopId);
+
+      const [productsRes, templatesRes] = await Promise.all([
+        adminAPI.getProducts(currentShopId),
+        adminAPI.getTemplates(currentShopId),
       ]);
-      
+
       setProducts(productsRes.data);
-      setShops(shopsRes.data);
       setTemplates(templatesRes.data);
-      
-      // Auto-select shop if only one exists
-      if (!selectedShop && shopsRes.data.length === 1) {
-        setSelectedShop(shopsRes.data[0].id);
-      }
-      
+
       // Reset selection when data reloads
       setSelectedProducts(new Set());
     } catch (error) {
@@ -64,13 +60,8 @@ function Products() {
   };
 
   const handleOpenSelector = () => {
-    if (!selectedShop && shops.length > 1) {
-      alert('Please select a shop first');
-      return;
-    }
-    const shopId = selectedShop || shops[0]?.id;
     if (!shopId) {
-      alert('No shop available');
+      alert('No shop available. Please reload the app.');
       return;
     }
     setShowSelector(true);
@@ -245,21 +236,6 @@ function Products() {
         </div>
 
         <div className="button-group flex gap-3">
-          {shops.length > 1 && (
-            <select
-              value={selectedShop || ''}
-              onChange={(e) => setSelectedShop(e.target.value || null)}
-              className="input w-64"
-            >
-              <option value="">All Shops</option>
-              {shops.map((shop) => (
-                <option key={shop.id} value={shop.id}>
-                  {shop.shop_domain}
-                </option>
-              ))}
-            </select>
-          )}
-
           <button
             onClick={handleOpenSelector}
             className="btn-primary flex items-center gap-2"
@@ -597,7 +573,7 @@ function Products() {
         isOpen={showSelector}
         onClose={() => setShowSelector(false)}
         onProductsAdded={loadData}
-        shopId={selectedShop || shops[0]?.id}
+        shopId={shopId}
       />
 
       {/* Bulk Template Assignment Modal */}

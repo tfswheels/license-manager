@@ -2,27 +2,31 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingCart, Eye, AlertCircle } from 'lucide-react';
 import { adminAPI } from '../utils/api';
+import { getCurrentShopId } from '../utils/shopUtils';
 
 function Orders() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
-  const [shops, setShops] = useState([]);
-  const [selectedShop, setSelectedShop] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadData();
-  }, [selectedShop]);
+  }, []);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [ordersRes, shopsRes] = await Promise.all([
-        adminAPI.getOrders(selectedShop),
-        adminAPI.getShops(),
-      ]);
+
+      // Get current shop ID from URL/session
+      const shopId = await getCurrentShopId();
+      if (!shopId) {
+        console.error('No shop ID found');
+        setLoading(false);
+        return;
+      }
+
+      const ordersRes = await adminAPI.getOrders(shopId);
       setOrders(ordersRes.data);
-      setShops(shopsRes.data);
     } catch (error) {
       console.error('Failed to load orders:', error);
     } finally {
@@ -41,26 +45,9 @@ function Orders() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Orders</h1>
-          <p className="text-gray-500 mt-1">View order history and license allocations</p>
-        </div>
-
-        {shops.length > 1 && (
-          <select
-            value={selectedShop || ''}
-            onChange={(e) => setSelectedShop(e.target.value || null)}
-            className="input w-64"
-          >
-            <option value="">All Shops</option>
-            {shops.map((shop) => (
-              <option key={shop.id} value={shop.id}>
-                {shop.shop_domain}
-              </option>
-            ))}
-          </select>
-        )}
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Orders</h1>
+        <p className="text-gray-500 mt-1">View order history and license allocations</p>
       </div>
 
       {/* Orders Table */}
