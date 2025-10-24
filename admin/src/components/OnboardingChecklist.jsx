@@ -22,6 +22,7 @@ export default function OnboardingChecklist() {
   const [isMinimized, setIsMinimized] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [completedSteps, setCompletedSteps] = useState(new Set());
+  const [congratulationShown, setCongratulationShown] = useState(false);
 
   const steps = [
     {
@@ -94,6 +95,7 @@ export default function OnboardingChecklist() {
   useEffect(() => {
     const savedSteps = localStorage.getItem('onboarding_checklist_steps');
     const dismissed = localStorage.getItem('onboarding_checklist_dismissed');
+    const congratulated = localStorage.getItem('onboarding_checklist_congratulated');
 
     if (dismissed === 'true') {
       setIsVisible(false);
@@ -101,6 +103,10 @@ export default function OnboardingChecklist() {
 
     if (savedSteps) {
       setCompletedSteps(new Set(JSON.parse(savedSteps)));
+    }
+
+    if (congratulated === 'true') {
+      setCongratulationShown(true);
     }
 
     // Load minimized state
@@ -152,9 +158,13 @@ export default function OnboardingChecklist() {
   const allRequiredComplete = requiredCompleted === requiredSteps.length;
 
   useEffect(() => {
-    if (allRequiredComplete && completedSteps.size >= 5) {
+    if (allRequiredComplete && completedSteps.size >= 5 && !congratulationShown) {
       // Show congratulations after a brief delay
       const timer = setTimeout(() => {
+        // Mark as shown immediately to prevent re-showing
+        setCongratulationShown(true);
+        localStorage.setItem('onboarding_checklist_congratulated', 'true');
+
         if (window.confirm('🎉 Congratulations! You\'ve completed the essential setup steps. Would you like to close this checklist?')) {
           localStorage.setItem('onboarding_checklist_dismissed', 'true');
           setIsVisible(false);
@@ -162,7 +172,7 @@ export default function OnboardingChecklist() {
       }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [allRequiredComplete, completedSteps.size]);
+  }, [allRequiredComplete, completedSteps.size, congratulationShown]);
 
   if (!isVisible) return null;
 
