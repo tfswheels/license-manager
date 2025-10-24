@@ -93,12 +93,25 @@ export default function OnboardingChecklist() {
 
   // Load completed steps from localStorage on mount
   useEffect(() => {
+    console.log('🎯 OnboardingChecklist mounted!');
+
     const savedSteps = localStorage.getItem('onboarding_checklist_steps');
     const dismissed = localStorage.getItem('onboarding_checklist_dismissed');
     const congratulated = localStorage.getItem('onboarding_checklist_congratulated');
+    const minimized = localStorage.getItem('onboarding_checklist_minimized');
+
+    console.log('📦 LocalStorage values:', {
+      savedSteps,
+      dismissed,
+      congratulated,
+      minimized
+    });
 
     if (dismissed === 'true') {
+      console.log('❌ Checklist dismissed, hiding');
       setIsVisible(false);
+    } else {
+      console.log('✅ Checklist should be visible');
     }
 
     if (savedSteps) {
@@ -110,7 +123,6 @@ export default function OnboardingChecklist() {
     }
 
     // Load minimized state
-    const minimized = localStorage.getItem('onboarding_checklist_minimized');
     if (minimized === 'true') {
       setIsMinimized(true);
     }
@@ -174,7 +186,12 @@ export default function OnboardingChecklist() {
     }
   }, [allRequiredComplete, completedSteps.size, congratulationShown]);
 
-  if (!isVisible) return null;
+  if (!isVisible) {
+    console.log('⚠️ Checklist not visible, returning null');
+    return null;
+  }
+
+  console.log('🎨 Rendering checklist with', completedSteps.size, 'completed steps');
 
   const progress = (completedSteps.size / steps.length) * 100;
   const completedCount = completedSteps.size;
