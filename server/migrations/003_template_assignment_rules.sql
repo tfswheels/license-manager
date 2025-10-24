@@ -7,16 +7,17 @@ CREATE TABLE IF NOT EXISTS template_assignment_rules (
   id INT PRIMARY KEY AUTO_INCREMENT,
   shop_id INT NOT NULL,
   template_id INT NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
   rule_type ENUM('tag', 'collection', 'price_range', 'vendor') NOT NULL,
   rule_value TEXT NOT NULL,
   priority INT NOT NULL DEFAULT 100,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  
+
   FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE,
   FOREIGN KEY (template_id) REFERENCES email_templates(id) ON DELETE CASCADE,
-  
+
   INDEX idx_shop_active (shop_id, is_active),
   INDEX idx_priority (priority),
   INDEX idx_rule_type (rule_type)

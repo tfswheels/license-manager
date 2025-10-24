@@ -40,15 +40,21 @@ export async function getAllRules(shopId) {
 }
 
 // Create a new rule
-export async function createRule(shopId, templateId, ruleType, ruleValue, priority = 100) {
+export async function createRule(shopId, templateId, ruleType, ruleValue, priority = 100, ruleName = null) {
   try {
+    // Generate default rule name if not provided
+    if (!ruleName) {
+      const typeLabel = ruleType.charAt(0).toUpperCase() + ruleType.slice(1);
+      ruleName = `${typeLabel}: ${ruleValue}`;
+    }
+
     const [result] = await db.execute(
-      `INSERT INTO template_assignment_rules 
-       (shop_id, template_id, rule_type, rule_value, priority) 
-       VALUES (?, ?, ?, ?, ?)`,
-      [shopId, templateId, ruleType, ruleValue, priority]
+      `INSERT INTO template_assignment_rules
+       (shop_id, template_id, rule_name, rule_type, rule_value, priority)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [shopId, templateId, ruleName, ruleType, ruleValue, priority]
     );
-    
+
     console.log(`✅ Created rule: ${ruleType} = ${ruleValue} → template ${templateId}`);
     return result.insertId;
   } catch (error) {
@@ -63,6 +69,10 @@ export async function updateRule(ruleId, updates) {
     const fields = [];
     const values = [];
 
+    if (updates.rule_name !== undefined) {
+      fields.push('rule_name = ?');
+      values.push(updates.rule_name);
+    }
     if (updates.template_id !== undefined) {
       fields.push('template_id = ?');
       values.push(updates.template_id);

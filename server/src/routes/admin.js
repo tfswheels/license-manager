@@ -3,6 +3,7 @@ import express from 'express';
 import db from '../config/database.js';
 import { shopify } from '../config/shopify.js';
 import Papa from 'papaparse';
+import sgMail from '@sendgrid/mail';
 import { manualAllocate } from '../services/orderService.js';
 import { sendLicenseEmail } from '../services/emailService.js';
 import {
@@ -1518,7 +1519,6 @@ router.post('/support/send', async (req, res) => {
     const subjectText = subjectMap[subject] || subject;
 
     // Create support email using SendGrid
-    const sgMail = require('@sendgrid/mail');
     const sendgridApiKey = process.env.SENDGRID_API_KEY;
 
     if (!sendgridApiKey) {
