@@ -95,6 +95,24 @@ export default function OnboardingChecklist() {
   useEffect(() => {
     console.log('🎯 OnboardingChecklist mounted!');
 
+    // Check for force reset URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const forceReset = urlParams.get('reset_onboarding') === 'true';
+
+    if (forceReset) {
+      console.log('🔄 FORCE RESET triggered via URL parameter!');
+      localStorage.removeItem('onboarding_checklist_steps');
+      localStorage.removeItem('onboarding_checklist_dismissed');
+      localStorage.removeItem('onboarding_checklist_congratulated');
+      localStorage.removeItem('onboarding_checklist_minimized');
+      setCompletedSteps(new Set());
+      setIsVisible(true);
+      setIsMinimized(false);
+      setCongratulationShown(false);
+      console.log('✅ Onboarding reset complete!');
+      return;
+    }
+
     const savedSteps = localStorage.getItem('onboarding_checklist_steps');
     const dismissed = localStorage.getItem('onboarding_checklist_dismissed');
     const congratulated = localStorage.getItem('onboarding_checklist_congratulated');
