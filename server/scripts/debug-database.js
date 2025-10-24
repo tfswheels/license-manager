@@ -34,12 +34,12 @@ async function debugDatabase() {
     });
     console.log('');
 
-    // Check license_manager database
-    console.log('🔍 Checking license_manager database:\n');
-    await connection.query('USE license_manager');
+    // Check railway database (Railway's default database name)
+    console.log('🔍 Checking railway database:\n');
+    await connection.query('USE railway');
 
     const [shops] = await connection.query('SELECT id, shop_domain, installed_at FROM shops ORDER BY id DESC');
-    console.log(`Found ${shops.length} shops in license_manager:`);
+    console.log(`Found ${shops.length} shops in railway database:`);
     shops.forEach(shop => {
       console.log(`  ID ${shop.id}: ${shop.shop_domain} (installed ${shop.installed_at})`);
     });

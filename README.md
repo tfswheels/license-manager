@@ -397,7 +397,7 @@ FRONTEND_URL=https://digikeyhq.com
 DB_HOST=your_cloud_sql_host
 DB_USER=your_user
 DB_PASSWORD=your_password
-DB_NAME=license_manager
+DB_NAME=railway
 DB_PORT=3306
 
 # Shopify
