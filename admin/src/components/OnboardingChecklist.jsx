@@ -93,14 +93,11 @@ export default function OnboardingChecklist() {
 
   // Load completed steps from localStorage on mount
   useEffect(() => {
-    console.log('🎯 OnboardingChecklist mounted!');
-
     // Check for force reset URL parameter
     const urlParams = new URLSearchParams(window.location.search);
     const forceReset = urlParams.get('reset_onboarding') === 'true';
 
     if (forceReset) {
-      console.log('🔄 FORCE RESET triggered via URL parameter!');
       localStorage.removeItem('onboarding_checklist_steps');
       localStorage.removeItem('onboarding_checklist_dismissed');
       localStorage.removeItem('onboarding_checklist_congratulated');
@@ -109,7 +106,6 @@ export default function OnboardingChecklist() {
       setIsVisible(true);
       setIsMinimized(false);
       setCongratulationShown(false);
-      console.log('✅ Onboarding reset complete!');
       return;
     }
 
@@ -118,18 +114,8 @@ export default function OnboardingChecklist() {
     const congratulated = localStorage.getItem('onboarding_checklist_congratulated');
     const minimized = localStorage.getItem('onboarding_checklist_minimized');
 
-    console.log('📦 LocalStorage values:', {
-      savedSteps,
-      dismissed,
-      congratulated,
-      minimized
-    });
-
     if (dismissed === 'true') {
-      console.log('❌ Checklist dismissed, hiding');
       setIsVisible(false);
-    } else {
-      console.log('✅ Checklist should be visible');
     }
 
     if (savedSteps) {
@@ -140,7 +126,6 @@ export default function OnboardingChecklist() {
       setCongratulationShown(true);
     }
 
-    // Load minimized state
     if (minimized === 'true') {
       setIsMinimized(true);
     }
@@ -204,12 +189,7 @@ export default function OnboardingChecklist() {
     }
   }, [allRequiredComplete, completedSteps.size, congratulationShown]);
 
-  if (!isVisible) {
-    console.log('⚠️ Checklist not visible, returning null');
-    return null;
-  }
-
-  console.log('🎨 Rendering checklist with', completedSteps.size, 'completed steps');
+  if (!isVisible) return null;
 
   const progress = (completedSteps.size / steps.length) * 100;
   const completedCount = completedSteps.size;

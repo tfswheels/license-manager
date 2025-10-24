@@ -1,8 +1,9 @@
 // admin/src/components/AppBridgeProvider.jsx
 import React, { useMemo, useEffect } from 'react';
-import { Provider as AppBridgeProvider } from '@shopify/app-bridge-react';
+import { Provider as AppBridgeProvider, useAppBridge } from '@shopify/app-bridge-react';
 import { useLocation } from 'react-router-dom';
 import LandingPage from '../pages/LandingPage';
+import { setAppBridgeInstance } from '../utils/api';
 
 /**
  * Shopify App Bridge Provider
@@ -89,7 +90,26 @@ export default function ShopifyAppBridgeProvider({ children }) {
 
   return (
     <AppBridgeProvider config={config}>
-      {children}
+      <AppBridgeInitializer>
+        {children}
+      </AppBridgeInitializer>
     </AppBridgeProvider>
   );
+}
+
+/**
+ * Internal component to initialize App Bridge instance
+ * Must be inside AppBridgeProvider to access the app instance
+ */
+function AppBridgeInitializer({ children }) {
+  const app = useAppBridge();
+
+  useEffect(() => {
+    if (app) {
+      // Register App Bridge instance with API client for session tokens
+      setAppBridgeInstance(app);
+    }
+  }, [app]);
+
+  return children;
 }

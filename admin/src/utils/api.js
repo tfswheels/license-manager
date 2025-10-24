@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getSessionToken } from '@shopify/app-bridge/utilities';
 
 // Use VITE_API_URL environment variable, fallback to localhost for development
 const api = axios.create({
@@ -8,7 +9,37 @@ const api = axios.create({
   },
 });
 
-// Interceptor for error handling
+// Store App Bridge instance globally
+let appBridgeInstance = null;
+
+// Function to set the App Bridge instance
+export function setAppBridgeInstance(app) {
+  appBridgeInstance = app;
+}
+
+// Request interceptor to add session token
+api.interceptors.request.use(
+  async (config) => {
+    // Try to get session token if App Bridge is available
+    if (appBridgeInstance) {
+      try {
+        const sessionToken = await getSessionToken(appBridgeInstance);
+        if (sessionToken) {
+          config.headers.Authorization = `Bearer ${sessionToken}`;
+        }
+      } catch (error) {
+        console.warn('Could not get session token:', error.message);
+        // Continue without token for non-embedded contexts
+      }
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,
   (error) => {
