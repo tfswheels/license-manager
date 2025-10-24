@@ -74,13 +74,6 @@ function Layout({ children }) {
             );
           })}
         </nav>
-
-        <div className="p-4 border-t border-gray-200">
-          <div className="text-xs text-gray-500">
-            <p>v1.0.0</p>
-            <p>Day 4 - Settings ⚙️</p>
-          </div>
-        </div>
       </aside>
 
       {/* Main Content */}

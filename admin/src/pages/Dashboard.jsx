@@ -6,72 +6,51 @@ import { adminAPI } from '../utils/api';
 import { getCurrentShopId } from '../utils/shopUtils';
 
 function Dashboard() {
-  const [shops, setShops] = useState([]);
   const [stats, setStats] = useState(null);
-  const [selectedShop, setSelectedShop] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     loadData();
-  }, [selectedShop]);
+  }, []);
 
   const loadData = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      console.log('Fetching shops...');
-      const shopsRes = await adminAPI.getShops();
-      console.log('Shops response:', shopsRes);
+      // Get current shop ID from URL/session
+      const shopId = await getCurrentShopId();
 
-      // Handle different response structures
-      const shopsData = shopsRes?.data?.shops || shopsRes?.data || [];
-      console.log('Shops data:', shopsData);
+      if (!shopId) {
+        setError('Unable to determine current shop. Please reload the app from Shopify Admin.');
+        setLoading(false);
+        return;
+      }
 
-      if (Array.isArray(shopsData) && shopsData.length > 0) {
-        setShops(shopsData);
+      console.log('Loading dashboard data for shop:', shopId);
 
-        // Get current shop ID from URL/session instead of defaulting to first shop
-        let targetShopId = selectedShop;
-        if (!targetShopId) {
-          targetShopId = await getCurrentShopId();
+      try {
+        const statsRes = await adminAPI.getStats(shopId);
+        console.log('Stats response:', statsRes);
+
+        if (statsRes?.data) {
+          setStats(statsRes.data);
         }
-
-        // If still no shop ID found, use first shop as fallback
-        if (!targetShopId && shopsData.length > 0) {
-          targetShopId = shopsData[0].id;
-          console.log('No shop detected from URL, using first shop as fallback:', targetShopId);
-        }
-
-        console.log('Fetching stats for shop:', targetShopId);
-
-        try {
-          const statsRes = await adminAPI.getStats(targetShopId);
-          console.log('Stats response:', statsRes);
-          
-          if (statsRes?.data) {
-            setStats(statsRes.data);
-          }
-        } catch (statsError) {
-          console.error('Stats fetch failed:', statsError);
-          // Continue even if stats fail
-          setStats({
-            totalOrders: 0,
-            totalProducts: 0,
-            totalLicenses: 0,
-            availableLicenses: 0
-          });
-        }
-      } else {
-        console.log('No shops found or invalid data structure');
-        setShops([]);
+      } catch (statsError) {
+        console.error('Stats fetch failed:', statsError);
+        // Continue even if stats fail - show zeros
+        setStats({
+          totalOrders: 0,
+          totalProducts: 0,
+          totalLicenses: 0,
+          availableLicenses: 0
+        });
       }
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
       console.error('Error details:', error.response || error.message);
       setError(`Failed to load dashboard: ${error.message}`);
-      setShops([]);
     } finally {
       setLoading(false);
     }
@@ -95,19 +74,6 @@ function Dashboard() {
             Retry
           </button>
         </div>
-      </div>
-    );
-  }
-
-  if (!shops || shops.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <Key className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-        <h2 className="text-xl font-medium text-gray-900 mb-2">No shops installed</h2>
-        <p className="text-gray-500 mb-4">Install the app on a Shopify store to get started</p>
-        <button onClick={loadData} className="btn-secondary">
-          Refresh
-        </button>
       </div>
     );
   }
@@ -148,26 +114,9 @@ function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500 mt-1">Overview of your license management system</p>
-        </div>
-        
-        {shops.length > 1 && (
-          <select
-            value={selectedShop || ''}
-            onChange={(e) => setSelectedShop(e.target.value || null)}
-            className="input w-64"
-          >
-            <option value="">All Shops</option>
-            {shops.map((shop) => (
-              <option key={shop.id} value={shop.id}>
-                {shop.shop_domain}
-              </option>
-            ))}
-          </select>
-        )}
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+        <p className="text-gray-500 mt-1">Overview of your license management system</p>
       </div>
 
       {/* Stats Grid */}
@@ -190,27 +139,6 @@ function Dashboard() {
         })}
       </div>
 
-      {/* Installed Shops */}
-      <div className="card">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Installed Shops</h2>
-        <div className="space-y-3">
-          {shops.map((shop) => (
-            <div
-              key={shop.id}
-              className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-            >
-              <div>
-                <p className="font-medium text-gray-900">{shop.shop_domain}</p>
-                <p className="text-sm text-gray-500">
-                  Installed: {new Date(shop.installed_at).toLocaleDateString()}
-                </p>
-              </div>
-              <span className="badge badge-success">Active</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* Quick Actions */}
       <div className="card">
         <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
@@ -223,7 +151,7 @@ function Dashboard() {
             <h3 className="font-medium text-gray-900">Manage Products</h3>
             <p className="text-sm text-gray-500 mt-1">Sync and link products to licenses</p>
           </Link>
-          
+
           <Link
             to="/orders"
             className="p-6 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 hover:scale-105 transition-all duration-200"
@@ -232,7 +160,7 @@ function Dashboard() {
             <h3 className="font-medium text-gray-900">View Orders</h3>
             <p className="text-sm text-gray-500 mt-1">Check order history and allocations</p>
           </Link>
-          
+
           <Link
             to="/templates"
             className="p-6 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 hover:scale-105 transition-all duration-200"

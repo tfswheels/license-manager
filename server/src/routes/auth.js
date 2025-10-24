@@ -71,14 +71,12 @@ router.get('/callback', async (req, res) => {
     console.log('🔵 Registering webhooks...');
     await registerWebhooks(shop, accessToken);
 
-    console.log('🔵 Redirecting to frontend...');
+    console.log('🔵 Redirecting to Shopify Admin...');
 
-    // Build frontend URL with shop and host parameters
-    const frontendUrl = process.env.FRONTEND_URL || 'https://license-manager-lovat.vercel.app';
-    const host = req.query.host || '';
-
-    // Redirect to frontend with all necessary parameters for embedded apps
-    const redirectUrl = `${frontendUrl}?shop=${shop}&host=${encodeURIComponent(host)}`;
+    // For embedded apps, redirect back to Shopify Admin to load the app in iframe
+    // This ensures proper App Bridge initialization and avoids "page not found" errors
+    const apiKey = process.env.SHOPIFY_API_KEY;
+    const redirectUrl = `https://${shop}/admin/apps/${apiKey}`;
 
     console.log(`🔵 Redirecting to: ${redirectUrl}`);
     res.redirect(redirectUrl);
