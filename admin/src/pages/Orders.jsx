@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, Eye, AlertCircle, Search, X } from 'lucide-react';
+import { ShoppingCart, Eye, AlertCircle, X } from 'lucide-react';
 import { adminAPI } from '../utils/api';
 import { getCurrentShopId } from '../utils/shopUtils';
 
@@ -68,13 +68,12 @@ function Orders() {
 
       {/* Search Bar */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
         <input
           type="text"
           placeholder="Search orders by number, customer name, or email..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-12 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
         {searchQuery && (
           <button
