@@ -22,6 +22,9 @@ export async function processOrder(shopDomain, orderData) {
     const shopId = shops[0].id;
     const accessToken = shops[0].access_token;
 
+    // Extract shop name from domain (e.g., "mystore" from "mystore.myshopify.com")
+    const shopName = shopDomain.replace('.myshopify.com', '').replace('-', ' ');
+
     // Get shop settings for this order
     const settings = await getShopSettings(shopId);
 
@@ -96,7 +99,8 @@ export async function processOrder(shopDomain, orderData) {
           licenses: licenses.map(l => l.license_key),
           settings,
           shopDomain,
-          accessToken
+          accessToken,
+          shopName
         });
 
         await connection.execute(
@@ -139,7 +143,8 @@ export async function processOrder(shopDomain, orderData) {
             settings,
             placeholder: settings.out_of_stock_placeholder,
             shopDomain,
-            accessToken
+            accessToken,
+            shopName
           });
 
           await connection.execute(
@@ -316,6 +321,7 @@ export async function manualAllocate(orderId) {
 
     const shopDomain = shops[0]?.shop_domain;
     const accessToken = shops[0]?.access_token;
+    const shopName = shopDomain?.replace('.myshopify.com', '').replace('-', ' ');
 
     for (const item of orderItems) {
       const needed = item.quantity - item.licenses_allocated;
@@ -349,7 +355,8 @@ export async function manualAllocate(orderId) {
           licenses: licenses.map(l => l.license_key),
           settings,
           shopDomain,
-          accessToken
+          accessToken,
+          shopName
         });
 
         await connection.execute(

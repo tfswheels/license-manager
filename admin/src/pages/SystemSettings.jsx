@@ -44,7 +44,9 @@ export default function SystemSettings() {
         enforce_unique_licenses: Boolean(settingsData.enforce_unique_licenses),
         enforce_unique_per_order: Boolean(settingsData.enforce_unique_per_order),
         notify_on_out_of_stock: Boolean(settingsData.notify_on_out_of_stock),
-        notify_on_uniqueness_issue: Boolean(settingsData.notify_on_uniqueness_issue)
+        notify_on_uniqueness_issue: Boolean(settingsData.notify_on_uniqueness_issue),
+        notify_on_low_stock: Boolean(settingsData.notify_on_low_stock),
+        low_stock_threshold: settingsData.low_stock_threshold || 10
       };
 
       setSettings(normalizedSettings);
@@ -97,7 +99,9 @@ export default function SystemSettings() {
         enforce_unique_licenses: Boolean(resetSettings.enforce_unique_licenses),
         enforce_unique_per_order: Boolean(resetSettings.enforce_unique_per_order),
         notify_on_out_of_stock: Boolean(resetSettings.notify_on_out_of_stock),
-        notify_on_uniqueness_issue: Boolean(resetSettings.notify_on_uniqueness_issue)
+        notify_on_uniqueness_issue: Boolean(resetSettings.notify_on_uniqueness_issue),
+        notify_on_low_stock: Boolean(resetSettings.notify_on_low_stock),
+        low_stock_threshold: resetSettings.low_stock_threshold || 10
       };
 
       setSettings(normalizedSettings);
@@ -462,7 +466,7 @@ export default function SystemSettings() {
                 placeholder="e.g., admin@yourcompany.com"
               />
               <p className="mt-1 text-sm text-gray-600">
-                Receive notifications about license allocation issues (leave blank to disable)
+                Receive notifications about license allocation issues and low stock alerts
               </p>
             </div>
 
@@ -497,6 +501,39 @@ export default function SystemSettings() {
                     </div>
                   </div>
                 </label>
+
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={settings.notify_on_low_stock}
+                    onChange={(e) => updateSetting('notify_on_low_stock', e.target.checked)}
+                    className="mt-1 w-4 h-4 text-blue-600 rounded"
+                  />
+                  <div>
+                    <div className="font-medium text-gray-900">Notify on low stock</div>
+                    <div className="text-sm text-gray-600">
+                      Send alert when available licenses fall below threshold (max once per 24 hours per product)
+                    </div>
+                  </div>
+                </label>
+
+                {settings.notify_on_low_stock && (
+                  <div className="ml-7 mt-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Low Stock Threshold
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={settings.low_stock_threshold || 10}
+                      onChange={(e) => updateSetting('low_stock_threshold', parseInt(e.target.value) || 10)}
+                      className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <p className="mt-1 text-sm text-gray-600">
+                      Send alert when available licenses ≤ this number
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>

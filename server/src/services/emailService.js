@@ -53,7 +53,8 @@ export async function sendLicenseEmail({
   settings = null,
   placeholder = null,
   shopDomain = null,
-  accessToken = null
+  accessToken = null,
+  shopName = null
 }) {
   try {
     // Get template for this product
@@ -82,7 +83,8 @@ export async function sendLicenseEmail({
       order_number: orderNumber,
       product_name: productName,
       license_keys: licenseKeysHtml,
-      license_keys_text: licenseKeysText
+      license_keys_text: licenseKeysText,
+      shop_name: shopName || shopDomain || 'Our Store'
     };
 
     // Render HTML and text content

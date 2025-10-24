@@ -1144,6 +1144,7 @@ router.post('/orders/:orderId/resend', async (req, res) => {
     const order = orders[0];
     const shopDomain = order.shop_domain;
     const accessToken = order.access_token;
+    const shopName = shopDomain.replace('.myshopify.com', '').replace('-', ' ');
 
     // Load shop settings for email customization
     const settings = await getShopSettings(order.shop_id);
@@ -1183,7 +1184,8 @@ router.post('/orders/:orderId/resend', async (req, res) => {
           licenses: licenses.map(l => l.license_key),
           settings,
           shopDomain,
-          accessToken
+          accessToken,
+          shopName
         });
 
         // Log the resend
@@ -1249,6 +1251,7 @@ router.post('/orders/manual-send', async (req, res) => {
     const product = products[0];
     const shopDomain = product.shop_domain;
     const accessToken = product.access_token;
+    const shopName = shopDomain.replace('.myshopify.com', '').replace('-', ' ');
 
     // Load shop settings for email customization
     const settings = await getShopSettings(product.shop_id);
@@ -1266,20 +1269,20 @@ router.post('/orders/manual-send', async (req, res) => {
       });
     }
 
-    // Generate next FREE order number
-    const [lastFreeOrder] = await connection.execute(
-      `SELECT shopify_order_id FROM orders 
-       WHERE order_type = 'manual' AND shopify_order_id LIKE 'FREE-%'
+    // Generate next MANUAL order number
+    const [lastManualOrder] = await connection.execute(
+      `SELECT shopify_order_id FROM orders
+       WHERE order_type = 'manual' AND shopify_order_id LIKE 'MANUAL-%'
        ORDER BY id DESC LIMIT 1`
     );
 
-    let nextFreeNumber = 1;
-    if (lastFreeOrder.length > 0) {
-      const lastNumber = parseInt(lastFreeOrder[0].shopify_order_id.replace('FREE-', ''));
-      nextFreeNumber = lastNumber + 1;
+    let nextManualNumber = 1;
+    if (lastManualOrder.length > 0) {
+      const lastNumber = parseInt(lastManualOrder[0].shopify_order_id.replace('MANUAL-', ''));
+      nextManualNumber = lastNumber + 1;
     }
 
-    const freeOrderId = `FREE-${String(nextFreeNumber).padStart(4, '0')}`;
+    const freeOrderId = `MANUAL-${String(nextManualNumber).padStart(4, '0')}`;
 
     // Create manual order
     const [orderResult] = await connection.execute(
@@ -1344,7 +1347,8 @@ router.post('/orders/manual-send', async (req, res) => {
       licenses: availableLicenses.map(l => l.license_key),
       settings,
       shopDomain,
-      accessToken
+      accessToken,
+      shopName
     });
 
     // Log email
