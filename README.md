@@ -39,7 +39,7 @@ A complete digital license distribution system for Shopify stores. Automatically
 - Real-time order processing
 - Instant email delivery via SendGrid
 - License allocation tracking
-- Inventory monitoring with low-stock alerts
+- **Low-Stock Alert System** - Email notifications when inventory is low ⭐
 - **Free License Allocation** - Send licenses manually to any email ⭐ NEW
 
 ### 📧 Custom Email Templates ✅
@@ -91,9 +91,11 @@ A complete digital license distribution system for Shopify stores. Automatically
   - Customers reply directly to merchant
   - Advanced: Custom sender email (requires domain verification)
   - Default sender: mail@digikeyhq.com ⭐ NEW
-- **Notification Settings** - Admin alerts for:
+- **Notification Settings** - Admin alerts (auto-populated with shop email) ⭐:
   - Out of stock situations
   - Uniqueness constraint issues
+  - **Low stock alerts** - Configurable threshold (default: 10 licenses) ⭐
+  - **Smart rate limiting** - Max 1 alert per product per 24 hours ⭐
 - **Template Assignment Rules Engine** - Auto-assign templates based on:
   - Product tags (e.g., "software", "game")
   - Vendor/manufacturer
@@ -261,8 +263,9 @@ Compact Design (Embedded) + Mobile Layout (if small screen)
 - [x] **Security headers** ⭐
 - [x] **Fully responsive mobile design** ⭐ NEW
 - [x] **Compact embedded UI** ⭐ NEW
-- [x] **Auto-populate shop email for reply-to** ⭐ NEW
+- [x] **Auto-populate shop email for reply-to and notifications** ⭐ NEW
 - [x] **Free license allocation** ⭐ NEW
+- [x] **Low stock alert system** ⭐ NEW
 
 ---
 
@@ -324,6 +327,7 @@ Compact Design (Embedded) + Mobile Layout (if small screen)
 | **GraphQL Product Fetch** | ✅ | ❌ | ❌ |
 | **Custom Email Settings** | ✅ | ❌ | ❌ |
 | **Auto-Populate Shop Email** | ✅ ⭐ | ❌ | ❌ |
+| **Low Stock Alerts** | ✅ ⭐ | ❌ | ⚠️ |
 | **Free License Allocation** | ✅ ⭐ | ❌ | ❌ |
 | **Bulk Operations** | ✅ | ⚠️ | ⚠️ |
 
@@ -337,6 +341,9 @@ Compact Design (Embedded) + Mobile Layout (if small screen)
 - **Session Tokens** - JWT-based authentication (no cookies)
 - **OAuth 2.0** - Initial installation flow
 - **Webhooks** - Auto-registered on installation
+  - ⚠️ **Development Limitation:** `orders/create` webhook requires "Protected Customer Data" approval (available after App Store submission)
+  - ✅ **GDPR Webhooks:** Auto-registered by Shopify for App Store apps
+  - 🧪 **Testing:** Use Shopify webhook testing tool or manual triggers in development
 - **Billing API** - GraphQL mutations for subscriptions
 
 ### GDPR Compliance
@@ -351,8 +358,17 @@ Compact Design (Embedded) + Mobile Layout (if small screen)
   1. User-defined reply-to (if set in settings)
   2. Shop email from Shopify API (auto-populated on first settings load)
   3. From email (fallback)
+- **Notification Email:** Auto-populated with shop email on installation
 - **SaaS Architecture** - Each shop can customize sender name and reply-to
 - **SendGrid Integration** - Transactional email with delivery tracking
+
+### Low Stock Alert System
+- **Auto-Detection:** Checks inventory after each license allocation
+- **Configurable Threshold:** Default 10 licenses, customizable per shop
+- **Rate Limiting:** Maximum 1 email per product per 24 hours
+- **Email Notifications:** Sent to shop's notification email (auto-populated from Shopify)
+- **Database Tracking:** `inventory_alerts` table prevents duplicate alerts
+- **Smart Cleanup:** Alerts reset when inventory is replenished above threshold
 
 ### Responsive Design
 - **Auto-Detection** - Detects embedded mode (shop param or iframe)

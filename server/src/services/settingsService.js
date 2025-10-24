@@ -53,21 +53,21 @@ async function getShopSettings(shopId) {
       [shopId]
     );
 
-    let defaultReplyTo = null;
+    let defaultEmail = null;
     if (shops.length > 0 && shops[0].access_token) {
-      // Fetch shop email from Shopify to pre-populate reply_to_email
+      // Fetch shop email from Shopify to pre-populate reply_to_email and notification_email
       const shopEmail = await fetchShopEmail(shops[0].shop_domain, shops[0].access_token);
       if (shopEmail) {
-        defaultReplyTo = shopEmail;
-        console.log(`📧 Pre-populated reply-to email for shop ${shopId}: ${shopEmail}`);
+        defaultEmail = shopEmail;
+        console.log(`📧 Pre-populated reply-to and notification email for shop ${shopId}: ${shopEmail}`);
       }
     }
 
-    // Create default settings with shop email as reply_to and default placeholder
+    // Create default settings with shop email as reply_to, notification_email, and default placeholder
     const defaultPlaceholder = 'Your license keys will be sent separately once available.';
     await db.query(
-      'INSERT INTO shop_settings (shop_id, reply_to_email, out_of_stock_placeholder) VALUES (?, ?, ?)',
-      [shopId, defaultReplyTo, defaultPlaceholder]
+      'INSERT INTO shop_settings (shop_id, reply_to_email, notification_email, out_of_stock_placeholder) VALUES (?, ?, ?, ?)',
+      [shopId, defaultEmail, defaultEmail, defaultPlaceholder]
     );
 
     // Fetch the newly created settings
