@@ -4,20 +4,13 @@ import { Link } from 'react-router-dom';
 import { Package, ShoppingCart, Key, AlertCircle, Mail } from 'lucide-react';
 import { adminAPI } from '../utils/api';
 import { getCurrentShopId } from '../utils/shopUtils';
-import WelcomeOnboarding from '../components/WelcomeOnboarding';
 
 function Dashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
-    // Check if onboarding has been completed
-    const onboardingCompleted = localStorage.getItem('onboarding_completed');
-    if (!onboardingCompleted) {
-      setShowOnboarding(true);
-    }
     loadData();
   }, []);
 
@@ -119,13 +112,7 @@ function Dashboard() {
   ];
 
   return (
-    <>
-      {/* Welcome Onboarding Modal */}
-      {showOnboarding && (
-        <WelcomeOnboarding onComplete={() => setShowOnboarding(false)} />
-      )}
-
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
@@ -185,7 +172,6 @@ function Dashboard() {
         </div>
       </div>
     </div>
-    </>
   );
 }
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Upload, Send, Package, AlertTriangle, Trash2, CheckSquare, Square, ChevronLeft, ChevronRight, Mail } from 'lucide-react';
+import { Plus, Upload, Send, Package, AlertTriangle, Trash2, CheckSquare, Square, ChevronLeft, ChevronRight, Mail, Search, X } from 'lucide-react';
 import { adminAPI } from '../utils/api';
 import { getCurrentShopId } from '../utils/shopUtils';
 import ProductSelector from '../components/ProductSelector';
@@ -18,6 +18,7 @@ function Products() {
   const [bulkTemplateId, setBulkTemplateId] = useState('');
   const [showManualSend, setShowManualSend] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Pagination & Bulk Selection
   const [currentPage, setCurrentPage] = useState(1);
@@ -198,11 +199,23 @@ function Products() {
     return template ? template.template_name : 'Unknown';
   };
 
+  // Search filtering
+  const filteredProducts = products.filter(product => {
+    if (!searchQuery.trim()) return true;
+
+    const query = searchQuery.toLowerCase();
+    return (
+      product.product_name?.toLowerCase().includes(query) ||
+      product.shopify_product_id?.toString().includes(query) ||
+      product.vendor?.toLowerCase().includes(query)
+    );
+  });
+
   // Pagination
-  const totalPages = Math.ceil(products.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentPageProducts = products.slice(startIndex, endIndex);
+  const currentPageProducts = filteredProducts.slice(startIndex, endIndex);
 
   const goToPage = (page) => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
@@ -244,6 +257,32 @@ function Products() {
             Add Products
           </button>
         </div>
+      </div>
+
+      {/* Search Bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Search products by name, ID, or vendor..."
+          value={searchQuery}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            setCurrentPage(1); // Reset to first page on search
+          }}
+          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => {
+              setSearchQuery('');
+              setCurrentPage(1);
+            }}
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
       {/* Bulk Actions Bar */}

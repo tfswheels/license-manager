@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Package, ShoppingCart, Key, Mail, Settings, GitBranch, Menu, X } from 'lucide-react';
+import OnboardingChecklist from './OnboardingChecklist';
 
 function Layout({ children }) {
   const location = useLocation();
@@ -82,6 +83,9 @@ function Layout({ children }) {
           {children}
         </div>
       </main>
+
+      {/* Persistent Onboarding Checklist */}
+      <OnboardingChecklist />
     </div>
   );
 }
