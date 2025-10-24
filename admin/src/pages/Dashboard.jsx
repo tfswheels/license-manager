@@ -4,13 +4,20 @@ import { Link } from 'react-router-dom';
 import { Package, ShoppingCart, Key, AlertCircle, Mail } from 'lucide-react';
 import { adminAPI } from '../utils/api';
 import { getCurrentShopId } from '../utils/shopUtils';
+import WelcomeOnboarding from '../components/WelcomeOnboarding';
 
 function Dashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
+    // Check if onboarding has been completed
+    const onboardingCompleted = localStorage.getItem('onboarding_completed');
+    if (!onboardingCompleted) {
+      setShowOnboarding(true);
+    }
     loadData();
   }, []);
 
@@ -112,12 +119,18 @@ function Dashboard() {
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500 mt-1">Overview of your license management system</p>
-      </div>
+    <>
+      {/* Welcome Onboarding Modal */}
+      {showOnboarding && (
+        <WelcomeOnboarding onComplete={() => setShowOnboarding(false)} />
+      )}
+
+      <div className="space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-500 mt-1">Overview of your license management system</p>
+        </div>
 
       {/* Stats Grid */}
       <div className="stats-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
