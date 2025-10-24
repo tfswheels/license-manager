@@ -235,30 +235,19 @@ async function registerWebhooks(shop, accessToken) {
     session: { shop, accessToken }
   });
 
+  // Only register webhooks that can be registered via API
+  // GDPR webhooks MUST be registered in Partner Dashboard for security
   const webhooks = [
-    // Order webhook for license processing
     {
       topic: 'orders/create',
       address: `${process.env.APP_URL}/webhooks/orders/create`,
       format: 'json'
-    },
-    // GDPR Compliance webhooks (required for Shopify App Store)
-    {
-      topic: 'customers/data_request',
-      address: `${process.env.APP_URL}/webhooks/gdpr/customers/data_request`,
-      format: 'json'
-    },
-    {
-      topic: 'customers/redact',
-      address: `${process.env.APP_URL}/webhooks/gdpr/customers/redact`,
-      format: 'json'
-    },
-    {
-      topic: 'shop/redact',
-      address: `${process.env.APP_URL}/webhooks/gdpr/shop/redact`,
-      format: 'json'
     }
   ];
+
+  console.log('📝 Note: GDPR webhooks (customers/data_request, customers/redact, shop/redact)');
+  console.log('   must be configured in Shopify Partner Dashboard → App Setup → Webhooks');
+  console.log('   They cannot be registered programmatically for security reasons.\n');
 
   try {
     for (const webhook of webhooks) {
@@ -274,7 +263,7 @@ async function registerWebhooks(shop, accessToken) {
       }
     }
 
-    console.log(`✅ All webhooks registered for ${shop}`);
+    console.log(`✅ Webhooks registered for ${shop}`);
   } catch (error) {
     console.error('Webhook registration error:', error);
   }
