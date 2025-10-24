@@ -42,19 +42,35 @@ export async function getAllRules(shopId) {
 // Create a new rule
 export async function createRule(shopId, templateId, ruleType, ruleValue, priority = 100) {
   try {
+    // Generate a descriptive rule name based on type and value
+    const ruleName = generateRuleName(ruleType, ruleValue);
+
     const [result] = await db.execute(
-      `INSERT INTO template_assignment_rules 
-       (shop_id, template_id, rule_type, rule_value, priority) 
-       VALUES (?, ?, ?, ?, ?)`,
-      [shopId, templateId, ruleType, ruleValue, priority]
+      `INSERT INTO template_assignment_rules
+       (shop_id, template_id, rule_name, rule_type, rule_value, priority)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [shopId, templateId, ruleName, ruleType, ruleValue, priority]
     );
-    
-    console.log(`✅ Created rule: ${ruleType} = ${ruleValue} → template ${templateId}`);
+
+    console.log(`✅ Created rule: ${ruleName} → template ${templateId}`);
     return result.insertId;
   } catch (error) {
     console.error('Error creating rule:', error);
     throw error;
   }
+}
+
+// Generate a descriptive rule name
+function generateRuleName(ruleType, ruleValue) {
+  const typeLabels = {
+    'tag': 'Tag',
+    'vendor': 'Vendor',
+    'price': 'Price',
+    'collection': 'Collection'
+  };
+
+  const typeLabel = typeLabels[ruleType] || ruleType;
+  return `${typeLabel}: ${ruleValue}`;
 }
 
 // Update a rule
@@ -70,6 +86,18 @@ export async function updateRule(ruleId, updates) {
     if (updates.rule_value !== undefined) {
       fields.push('rule_value = ?');
       values.push(updates.rule_value);
+
+      // If rule_value is being updated, also update rule_name
+      // First we need to get the current rule_type
+      const [currentRule] = await db.execute(
+        'SELECT rule_type FROM template_assignment_rules WHERE id = ?',
+        [ruleId]
+      );
+      if (currentRule.length > 0) {
+        const newRuleName = generateRuleName(currentRule[0].rule_type, updates.rule_value);
+        fields.push('rule_name = ?');
+        values.push(newRuleName);
+      }
     }
     if (updates.priority !== undefined) {
       fields.push('priority = ?');
