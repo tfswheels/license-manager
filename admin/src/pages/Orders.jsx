@@ -106,7 +106,6 @@ function Orders() {
                 <tr className="border-b border-gray-200">
                   <th className="text-left py-3 px-4 font-medium text-gray-700">Order</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-700">Customer</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Shop</th>
                   <th className="text-center py-3 px-4 font-medium text-gray-700">Items</th>
                   <th className="text-center py-3 px-4 font-medium text-gray-700">Licenses</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-700">Date</th>
@@ -127,7 +126,7 @@ function Orders() {
                           </div>
                           {order.order_type === 'manual' && (
                             <span className="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                              Free
+                              Manual
                             </span>
                           )}
                         </div>
@@ -139,9 +138,6 @@ function Orders() {
                           </p>
                           <p className="text-xs text-gray-500">{order.customer_email}</p>
                         </div>
-                      </td>
-                      <td className="py-4 px-4">
-                        <span className="text-sm text-gray-600">{order.shop_domain}</span>
                       </td>
                       <td className="py-4 px-4 text-center">
                         <span className="badge badge-info">{order.item_count || 0}</span>

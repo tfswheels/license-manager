@@ -345,7 +345,6 @@ function Products() {
                     </button>
                   </th>
                   <th className="text-left py-3 px-4 font-medium text-gray-700">Product</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Shop</th>
                   <th className="text-right py-3 px-4 font-medium text-gray-700">Price</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-700">Email Template</th>
                   <th className="text-right py-3 px-4 font-medium text-gray-700">Total Licenses</th>
@@ -381,9 +380,6 @@ function Products() {
                       <td className="py-4 px-4">
                         <div className="font-medium text-gray-900">{product.product_name}</div>
                         <div className="text-sm text-gray-500">ID: {product.shopify_product_id}</div>
-                      </td>
-                      <td className="py-4 px-4 text-sm text-gray-600">
-                        {product.shop_domain || 'Unknown'}
                       </td>
                       <td className="py-4 px-4 text-right">
                         <span className="font-medium text-gray-900">
@@ -489,10 +485,6 @@ function Products() {
                   </div>
 
                   <div className="card-body">
-                    <div className="card-field">
-                      <div className="card-label">Shop</div>
-                      <div className="card-value">{product.shop_domain || 'Unknown'}</div>
-                    </div>
                     <div className="card-field">
                       <div className="card-label">Price</div>
                       <div className="card-value">${product.price ? parseFloat(product.price).toFixed(2) : '0.00'}</div>

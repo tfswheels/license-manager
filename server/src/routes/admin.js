@@ -16,6 +16,7 @@ import {
   resetShopSettings,
   validateSettings
 } from '../services/settingsService.js';
+import { getShopUsageStats } from '../services/billingService.js';
 
 
 const router = express.Router();
@@ -1589,6 +1590,35 @@ Reply to this email to respond to the customer directly.
   } catch (error) {
     console.error('Error sending support message:', error);
     res.status(500).json({ error: 'Failed to send support message' });
+  }
+});
+
+// ==========================================
+// USAGE & BILLING ENDPOINTS
+// ==========================================
+
+// Get usage statistics for a shop
+router.get('/usage/:shopId', async (req, res) => {
+  try {
+    const { shopId } = req.params;
+
+    // Get shop domain
+    const [shops] = await db.execute(
+      'SELECT shop_domain FROM shops WHERE id = ?',
+      [shopId]
+    );
+
+    if (shops.length === 0) {
+      return res.status(404).json({ error: 'Shop not found' });
+    }
+
+    const shopDomain = shops[0].shop_domain;
+    const stats = await getShopUsageStats(shopId, shopDomain);
+
+    res.json(stats);
+  } catch (error) {
+    console.error('Error fetching usage stats:', error);
+    res.status(500).json({ error: 'Failed to fetch usage statistics' });
   }
 });
 

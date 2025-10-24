@@ -90,6 +90,7 @@ export const adminAPI = {
   
   // Stats
   getStats: (shopId = null) => api.get('/api/admin/stats', { params: { shopId } }),
+  getUsageStats: (shopId) => api.get(`/api/admin/usage/${shopId}`),
 
   // Settings
   getShopSettings: (shopId) => api.get(`/api/admin/shops/${shopId}/settings`),

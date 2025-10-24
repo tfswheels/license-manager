@@ -8,11 +8,12 @@ import db from '../config/database.js';
  */
 export const BILLING_PLANS = {
   FREE: {
-    name: 'Free',
+    name: 'Free Trial',
     price: 0,
     interval: null,
     test: false,
     features: {
+      maxOrdersPerMonth: 10,
       maxProducts: 2,
       maxLicensesPerProduct: 100,
       emailSupport: false,
@@ -20,49 +21,69 @@ export const BILLING_PLANS = {
       advancedRules: false
     }
   },
-  BASIC: {
-    name: 'Basic',
-    price: 9.99,
+  STARTER: {
+    name: 'Starter',
+    price: 14.99,
     interval: 'EVERY_30_DAYS',
     trialDays: 7,
     test: false,
     features: {
-      maxProducts: 10,
-      maxLicensesPerProduct: 1000,
-      emailSupport: true,
-      customTemplates: true,
-      advancedRules: false
-    }
-  },
-  PRO: {
-    name: 'Professional',
-    price: 29.99,
-    interval: 'EVERY_30_DAYS',
-    trialDays: 7,
-    test: false,
-    features: {
-      maxProducts: 50,
-      maxLicensesPerProduct: 10000,
-      emailSupport: true,
-      customTemplates: true,
-      advancedRules: true,
-      prioritySupport: true
-    }
-  },
-  ENTERPRISE: {
-    name: 'Enterprise',
-    price: 99.99,
-    interval: 'EVERY_30_DAYS',
-    trialDays: 14,
-    test: false,
-    features: {
+      maxOrdersPerMonth: 100,
       maxProducts: -1, // unlimited
       maxLicensesPerProduct: -1, // unlimited
       emailSupport: true,
       customTemplates: true,
       advancedRules: true,
+      privateBranding: true,
+      bulkUpload: true,
+      realTimeSync: true
+    }
+  },
+  GROWTH: {
+    name: 'Growth',
+    price: 24.99,
+    interval: 'EVERY_30_DAYS',
+    trialDays: 7,
+    test: false,
+    features: {
+      maxOrdersPerMonth: 499,
+      maxProducts: -1, // unlimited
+      maxLicensesPerProduct: -1, // unlimited
+      emailSupport: true,
+      customTemplates: true,
+      advancedRules: true,
+      privateBranding: true,
+      bulkUpload: true,
+      realTimeSync: true,
       prioritySupport: true,
-      dedicatedSupport: true
+      customSenderDomains: true,
+      orderHistoryExport: true,
+      dedicatedOnboarding: true
+    }
+  },
+  SCALE: {
+    name: 'Scale',
+    price: 34.99,
+    interval: 'EVERY_30_DAYS',
+    trialDays: 7,
+    test: false,
+    features: {
+      maxOrdersPerMonth: -1, // unlimited (500+)
+      maxProducts: -1, // unlimited
+      maxLicensesPerProduct: -1, // unlimited
+      emailSupport: true,
+      customTemplates: true,
+      advancedRules: true,
+      privateBranding: true,
+      bulkUpload: true,
+      realTimeSync: true,
+      premiumSupport: true,
+      customSenderDomains: true,
+      orderHistoryExport: true,
+      whiteGloveSetup: true,
+      customIntegrations: true,
+      apiAccess: true,
+      accountManager: true
     }
   }
 };
@@ -366,5 +387,97 @@ export async function getPlanLimits(shopDomain) {
   } catch (error) {
     console.error('Error getting plan limits:', error);
     return BILLING_PLANS.FREE.features;
+  }
+}
+
+/**
+ * Get order count for current billing period
+ */
+export async function getMonthlyOrderCount(shopId) {
+  try {
+    // Count orders from the start of current month
+    const [rows] = await db.execute(`
+      SELECT COUNT(*) as order_count
+      FROM orders
+      WHERE shop_id = ?
+        AND order_type != 'manual'
+        AND created_at >= DATE_FORMAT(NOW(), '%Y-%m-01 00:00:00')
+    `, [shopId]);
+
+    return rows[0]?.order_count || 0;
+  } catch (error) {
+    console.error('Error getting monthly order count:', error);
+    return 0;
+  }
+}
+
+/**
+ * Check if shop can process more orders based on their plan limit
+ */
+export async function canProcessOrder(shopId, shopDomain) {
+  try {
+    const [limits, orderCount] = await Promise.all([
+      getPlanLimits(shopDomain),
+      getMonthlyOrderCount(shopId)
+    ]);
+
+    const maxOrders = limits.maxOrdersPerMonth;
+
+    // -1 means unlimited
+    if (maxOrders === -1) {
+      return {
+        allowed: true,
+        current: orderCount,
+        limit: -1,
+        remaining: -1
+      };
+    }
+
+    const allowed = orderCount < maxOrders;
+
+    return {
+      allowed,
+      current: orderCount,
+      limit: maxOrders,
+      remaining: Math.max(0, maxOrders - orderCount)
+    };
+  } catch (error) {
+    console.error('Error checking order limit:', error);
+    // On error, allow the order to go through (fail open)
+    return { allowed: true, current: 0, limit: -1, remaining: -1 };
+  }
+}
+
+/**
+ * Get usage statistics for a shop
+ */
+export async function getShopUsageStats(shopId, shopDomain) {
+  try {
+    const [subscription, limits, orderCount] = await Promise.all([
+      getShopSubscription(shopDomain),
+      getPlanLimits(shopDomain),
+      getMonthlyOrderCount(shopId)
+    ]);
+
+    const planKey = subscription?.plan_key || 'FREE';
+    const plan = BILLING_PLANS[planKey];
+
+    return {
+      plan: {
+        key: planKey,
+        name: plan.name,
+        price: plan.price
+      },
+      orders: {
+        current: orderCount,
+        limit: limits.maxOrdersPerMonth,
+        remaining: limits.maxOrdersPerMonth === -1 ? -1 : Math.max(0, limits.maxOrdersPerMonth - orderCount),
+        percentage: limits.maxOrdersPerMonth === -1 ? 0 : Math.round((orderCount / limits.maxOrdersPerMonth) * 100)
+      },
+      features: limits
+    };
+  } catch (error) {
+    console.error('Error getting usage stats:', error);
+    throw error;
   }
 }

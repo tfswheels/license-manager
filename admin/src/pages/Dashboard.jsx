@@ -7,6 +7,7 @@ import { getCurrentShopId } from '../utils/shopUtils';
 
 function Dashboard() {
   const [stats, setStats] = useState(null);
+  const [usageStats, setUsageStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -31,11 +32,20 @@ function Dashboard() {
       console.log('Loading dashboard data for shop:', shopId);
 
       try {
-        const statsRes = await adminAPI.getStats(shopId);
+        const [statsRes, usageRes] = await Promise.all([
+          adminAPI.getStats(shopId),
+          adminAPI.getUsageStats(shopId)
+        ]);
+
         console.log('Stats response:', statsRes);
+        console.log('Usage response:', usageRes);
 
         if (statsRes?.data) {
           setStats(statsRes.data);
+        }
+
+        if (usageRes?.data) {
+          setUsageStats(usageRes.data);
         }
       } catch (statsError) {
         console.error('Stats fetch failed:', statsError);
@@ -138,6 +148,55 @@ function Dashboard() {
           );
         })}
       </div>
+
+      {/* Plan & Usage */}
+      {usageStats && (
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-gray-900">Current Plan & Usage</h2>
+            <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+              {usageStats.plan.name} - ${usageStats.plan.price}/month
+            </span>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-gray-700">Monthly Orders</span>
+                <span className="text-sm text-gray-600">
+                  {usageStats.orders.current} / {usageStats.orders.limit === -1 ? 'Unlimited' : usageStats.orders.limit}
+                </span>
+              </div>
+
+              {usageStats.orders.limit !== -1 && (
+                <>
+                  <div className="w-full bg-gray-200 rounded-full h-2.5">
+                    <div
+                      className={`h-2.5 rounded-full ${
+                        usageStats.orders.percentage >= 90 ? 'bg-red-600' :
+                        usageStats.orders.percentage >= 70 ? 'bg-yellow-500' :
+                        'bg-green-600'
+                      }`}
+                      style={{ width: `${Math.min(usageStats.orders.percentage, 100)}%` }}
+                    ></div>
+                  </div>
+
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="text-xs text-gray-500">
+                      {usageStats.orders.remaining} orders remaining this month
+                    </span>
+                    {usageStats.orders.percentage >= 80 && (
+                      <span className="text-xs font-medium text-yellow-600">
+                        {usageStats.orders.percentage >= 90 ? 'Limit almost reached!' : 'Approaching limit'}
+                      </span>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div className="card">

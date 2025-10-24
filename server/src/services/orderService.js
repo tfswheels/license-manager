@@ -3,10 +3,11 @@ import db from '../config/database.js';
 import { sendLicenseEmail, sendNotificationEmail } from './emailService.js';
 import { checkInventoryAlerts } from './inventoryService.js';
 import { getShopSettings } from './settingsService.js';
+import { canProcessOrder } from './billingService.js';
 
 export async function processOrder(shopDomain, orderData) {
   const connection = await db.getConnection();
-  
+
   try {
     await connection.beginTransaction();
 
@@ -24,6 +25,14 @@ export async function processOrder(shopDomain, orderData) {
 
     // Extract shop name from domain (e.g., "mystore" from "mystore.myshopify.com")
     const shopName = shopDomain.replace('.myshopify.com', '').replace('-', ' ');
+
+    // Check if shop can process more orders based on their plan
+    const orderLimitCheck = await canProcessOrder(shopId, shopDomain);
+    if (!orderLimitCheck.allowed) {
+      await connection.rollback();
+      console.warn(`⚠️ Order ${orderData.order_number} rejected: Monthly limit (${orderLimitCheck.limit}) reached`);
+      throw new Error(`Monthly order limit of ${orderLimitCheck.limit} orders has been reached. Please upgrade your plan to process more orders.`);
+    }
 
     // Get shop settings for this order
     const settings = await getShopSettings(shopId);
