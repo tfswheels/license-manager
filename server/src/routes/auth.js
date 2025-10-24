@@ -55,10 +55,15 @@ router.get('/callback', async (req, res) => {
 
     console.log('🔵 Attempting database insert...');
 
+    // DEBUG: Check which database we're actually using
+    const [dbCheck] = await db.execute('SELECT DATABASE() as current_db');
+    console.log('🔍 CURRENT DATABASE:', dbCheck[0].current_db);
+    console.log('🔍 ENV DB_NAME:', process.env.DB_NAME);
+
     const [result] = await db.execute(
-      `INSERT INTO shops (shop_domain, access_token, scopes) 
+      `INSERT INTO shops (shop_domain, access_token, scopes)
        VALUES (?, ?, ?)
-       ON DUPLICATE KEY UPDATE 
+       ON DUPLICATE KEY UPDATE
        access_token = VALUES(access_token),
        scopes = VALUES(scopes),
        updated_at = CURRENT_TIMESTAMP`,
