@@ -2,27 +2,48 @@
 import express from 'express';
 import crypto from 'crypto';
 import db from '../config/database.js';
+import { shopify } from '../config/shopify.js';
 
 const router = express.Router();
 
-// Verify webhook signature
+// Verify webhook signature for GDPR webhooks
+// GDPR webhooks use a different verification method than regular webhooks
 function verifyWebhook(req, res, next) {
-  const hmac = req.get('X-Shopify-Hmac-SHA256');
-  const body = req.body;
-  const secret = process.env.SHOPIFY_API_SECRET;
+  try {
+    const hmac = req.get('X-Shopify-Hmac-SHA256');
+    const secret = process.env.SHOPIFY_API_SECRET;
 
-  const hash = crypto
-    .createHmac('sha256', secret)
-    .update(body, 'utf8')
-    .digest('base64');
+    if (!hmac) {
+      console.error('❌ GDPR Webhook: Missing HMAC header');
+      return res.status(401).send('Unauthorized: Missing HMAC');
+    }
 
-  if (hash === hmac) {
-    // Parse the body for next middleware
-    req.shopifyData = JSON.parse(body.toString('utf8'));
-    next();
-  } else {
-    console.error('❌ GDPR Webhook verification failed');
-    res.status(401).send('Unauthorized');
+    // For GDPR webhooks, the body comes as raw Buffer from express.raw()
+    // We need to convert it to string, then parse as JSON for verification
+    const rawBody = req.body.toString('utf8');
+    const parsedBody = JSON.parse(rawBody);
+
+    // Generate hash using JSON.stringify of the parsed body
+    // This is the correct method for GDPR webhooks (different from regular webhooks)
+    const generatedHash = crypto
+      .createHmac('sha256', secret)
+      .update(JSON.stringify(parsedBody), 'utf8')
+      .digest('base64');
+
+    // Use Shopify's safe compare to prevent timing attacks
+    if (shopify.auth.safeCompare(generatedHash, hmac)) {
+      // Verification successful - attach parsed body for route handlers
+      req.shopifyData = parsedBody;
+      next();
+    } else {
+      console.error('❌ GDPR Webhook verification failed');
+      console.error('Expected:', generatedHash);
+      console.error('Received:', hmac);
+      res.status(401).send('Unauthorized: Invalid HMAC');
+    }
+  } catch (error) {
+    console.error('❌ GDPR Webhook verification error:', error.message);
+    res.status(401).send('Unauthorized: Verification error');
   }
 }
 
