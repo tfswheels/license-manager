@@ -5,8 +5,9 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>DigiKey HQ - Admin Dashboard</title>
-    <!-- Shopify App Bridge - API Key Configuration (injected by main.jsx) -->
-    <meta name="shopify-api-key" content="" />
+    <!-- Shopify App Bridge - API Key Configuration -->
+    <!-- Vite will replace %VITE_SHOPIFY_API_KEY% at build time -->
+    <meta name="shopify-api-key" content="%VITE_SHOPIFY_API_KEY%" id="shopify-api-key-meta" />
     <!-- Shopify App Bridge - MUST be loaded from CDN for embedded apps -->
     <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
   </head>
