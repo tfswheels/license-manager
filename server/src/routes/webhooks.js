@@ -55,6 +55,14 @@ function verifyWebhook(req, res, next) {
 }
 
 /**
+ * GET handler for Shopify automated testing
+ * Shopify's automated checker sends GET requests to verify endpoint exists
+ */
+router.get('/create', (req, res) => {
+  res.status(200).send('Webhook endpoint active');
+});
+
+/**
  * Order creation webhook - HMAC VERIFICATION NOW APPLIED
  * This is the critical fix - middleware was defined but never used!
  */
