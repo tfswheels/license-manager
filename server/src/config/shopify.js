@@ -10,7 +10,7 @@ export const shopify = shopifyApi({
   scopes: process.env.SHOPIFY_SCOPES.split(','),
   hostName: process.env.APP_URL.replace(/https?:\/\//, ''),
   hostScheme: process.env.APP_URL.startsWith('https') ? 'https' : 'http',
-  apiVersion: LATEST_API_VERSION,
+  apiVersion: '2025-10',  // Latest stable API version
   isEmbeddedApp: true,  // Enable embedded app mode for Shopify App Store
   logger: {
     level: process.env.NODE_ENV === 'development' ? 'debug' : 'info'
