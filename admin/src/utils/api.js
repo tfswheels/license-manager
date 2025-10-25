@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { getSessionToken } from '@shopify/app-bridge/utilities';
 
 // Use VITE_API_URL environment variable, fallback to localhost for development
 const api = axios.create({
@@ -15,6 +14,26 @@ let appBridgeInstance = null;
 // Function to set the App Bridge instance
 export function setAppBridgeInstance(app) {
   appBridgeInstance = app;
+}
+
+// Get session token from App Bridge (v4)
+async function getSessionToken(app) {
+  if (!app) return null;
+
+  try {
+    // In App Bridge v4, use idToken() method
+    if (typeof app.idToken === 'function') {
+      return await app.idToken();
+    }
+    // Fallback: try the global shopify object
+    if (window.shopify?.idToken) {
+      return await window.shopify.idToken();
+    }
+    return null;
+  } catch (error) {
+    console.warn('Error getting session token:', error);
+    return null;
+  }
 }
 
 // Request interceptor to add session token

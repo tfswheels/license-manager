@@ -1,8 +1,7 @@
 // admin/src/utils/sessionToken.js
-import { getSessionToken } from '@shopify/app-bridge/utilities';
 
 /**
- * Get session token from Shopify App Bridge
+ * Get session token from Shopify App Bridge (v4)
  * This token is used to authenticate API requests for embedded apps
  */
 export async function getShopifySessionToken(app) {
@@ -12,8 +11,20 @@ export async function getShopifySessionToken(app) {
   }
 
   try {
-    const token = await getSessionToken(app);
-    return token;
+    // In App Bridge v4, use idToken() method
+    if (typeof app.idToken === 'function') {
+      const token = await app.idToken();
+      return token;
+    }
+
+    // Fallback: try the global shopify object
+    if (window.shopify?.idToken) {
+      const token = await window.shopify.idToken();
+      return token;
+    }
+
+    console.warn('App Bridge idToken method not available');
+    return null;
   } catch (error) {
     console.error('Error getting session token:', error);
     return null;
