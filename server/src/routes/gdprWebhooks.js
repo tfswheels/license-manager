@@ -7,7 +7,7 @@ import { shopify } from '../config/shopify.js';
 const router = express.Router();
 
 // Verify webhook signature for GDPR webhooks
-// GDPR webhooks use a different verification method than regular webhooks
+// CRITICAL: Use raw payload directly, do NOT JSON.stringify!
 function verifyWebhook(req, res, next) {
   try {
     const hmac = req.get('X-Shopify-Hmac-SHA256');
@@ -18,22 +18,20 @@ function verifyWebhook(req, res, next) {
       return res.status(401).send('Unauthorized: Missing HMAC');
     }
 
-    // For GDPR webhooks, the body comes as raw Buffer from express.raw()
-    // We need to convert it to string, then parse as JSON for verification
-    const rawBody = req.body.toString('utf8');
-    const parsedBody = JSON.parse(rawBody);
+    // Use the raw payload DIRECTLY - do NOT parse or stringify!
+    // req.body is a Buffer from express.raw()
+    const rawPayload = req.body;
 
-    // Generate hash using JSON.stringify of the parsed body
-    // This is the correct method for GDPR webhooks (different from regular webhooks)
+    // Generate HMAC using raw payload
     const generatedHash = crypto
       .createHmac('sha256', secret)
-      .update(JSON.stringify(parsedBody), 'utf8')
+      .update(rawPayload, 'utf8')
       .digest('base64');
 
     // Use Shopify's safe compare to prevent timing attacks
     if (shopify.auth.safeCompare(generatedHash, hmac)) {
-      // Verification successful - attach parsed body for route handlers
-      req.shopifyData = parsedBody;
+      // Verification successful - parse body for route handlers
+      req.shopifyData = JSON.parse(rawPayload.toString('utf8'));
       next();
     } else {
       console.error('❌ GDPR Webhook verification failed');
@@ -42,7 +40,7 @@ function verifyWebhook(req, res, next) {
       res.status(401).send('Unauthorized: Invalid HMAC');
     }
   } catch (error) {
-    console.error('❌ GDPR Webhook verification error:', error.message);
+    console.error('❌ GDPR Webhook verification error:', error);
     res.status(401).send('Unauthorized: Verification error');
   }
 }
