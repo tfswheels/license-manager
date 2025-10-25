@@ -11,30 +11,41 @@ const api = axios.create({
 // Store App Bridge instance globally
 let appBridgeInstance = null;
 
+// Session token cache to avoid fetching on every request
+let cachedSessionToken = null;
+let tokenFetchedAt = 0;
+const TOKEN_CACHE_DURATION = 4 * 60 * 1000; // 4 minutes (tokens last ~5 min)
+
 // Function to set the App Bridge instance
 export function setAppBridgeInstance(app) {
   appBridgeInstance = app;
   console.log('App Bridge instance set for API client');
 }
 
-// Get session token from App Bridge (v4)
+// Get session token from App Bridge (v4) with caching
 async function getSessionToken(shopify) {
   if (!shopify) {
-    console.warn('Shopify global not available for session token');
     return null;
+  }
+
+  // Check if we have a valid cached token
+  const now = Date.now();
+  if (cachedSessionToken && (now - tokenFetchedAt) < TOKEN_CACHE_DURATION) {
+    return cachedSessionToken;
   }
 
   try {
     // In App Bridge v4, the shopify global provides idToken() method
     if (typeof shopify.idToken === 'function') {
-      console.log('Getting session token via shopify.idToken()');
       const token = await shopify.idToken();
-      console.log('Session token retrieved:', token ? '✓' : '✗');
+      if (token) {
+        cachedSessionToken = token;
+        tokenFetchedAt = now;
+      }
       return token;
     }
 
-    console.error('shopify.idToken() method not found. App Bridge may not be initialized correctly.');
-    console.log('Available methods on shopify object:', Object.keys(shopify));
+    console.error('shopify.idToken() method not found');
     return null;
   } catch (error) {
     console.error('Error getting session token:', error);
