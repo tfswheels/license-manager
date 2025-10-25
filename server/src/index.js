@@ -30,13 +30,14 @@ app.use(cors({
   credentials: true
 }));
 
-// JSON parsing FIRST (before any routes)
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Shopify webhooks need raw body for HMAC verification (specific routes)
+// CRITICAL: Webhook routes need raw body for HMAC verification
+// Must be applied BEFORE express.json() middleware
 app.use('/webhooks/orders', express.raw({ type: 'application/json' }));
 app.use('/webhooks/gdpr', express.raw({ type: 'application/json' }));
+
+// JSON parsing for all other routes (webhooks already handled above)
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/webhooks/orders', webhookRoutes);  // Shopify order webhooks
