@@ -11,19 +11,26 @@ export async function getShopifySessionToken(app) {
   }
 
   try {
-    // In App Bridge v4, use idToken() method
+    // Try various methods to get session token based on App Bridge version
+
+    // Method 1: idToken() method (App Bridge v4)
     if (typeof app.idToken === 'function') {
       const token = await app.idToken();
       return token;
     }
 
-    // Fallback: try the global shopify object
-    if (window.shopify?.idToken) {
-      const token = await window.shopify.idToken();
+    // Method 2: getSessionToken method
+    if (typeof app.getSessionToken === 'function') {
+      const token = await app.getSessionToken();
       return token;
     }
 
-    console.warn('App Bridge idToken method not available');
+    // Method 3: sessionToken property
+    if (app.sessionToken) {
+      return app.sessionToken;
+    }
+
+    console.warn('No session token method found on App Bridge instance');
     return null;
   } catch (error) {
     console.error('Error getting session token:', error);

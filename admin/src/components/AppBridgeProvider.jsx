@@ -1,16 +1,21 @@
 // admin/src/components/AppBridgeProvider.jsx
 import React, { useEffect } from 'react';
+import { useAppBridge } from '@shopify/app-bridge-react';
 import { useLocation } from 'react-router-dom';
 import LandingPage from '../pages/LandingPage';
 import { setAppBridgeInstance } from '../utils/api';
 
 /**
  * Shopify App Bridge Provider (v4)
- * App Bridge is initialized via the CDN script and meta tag in index.html
+ * In v4, App Bridge is initialized via the CDN script and meta tag in index.html
  * This component just handles shop detection and sets up the API client
+ * No Provider wrapper needed - useAppBridge hook works with CDN-initialized instance
  */
 export default function ShopifyAppBridgeProvider({ children }) {
   const location = useLocation();
+
+  // Get App Bridge instance from CDN-initialized App Bridge
+  const app = useAppBridge();
 
   // Get shop from URL query params or sessionStorage
   const params = new URLSearchParams(location.search);
@@ -42,30 +47,19 @@ export default function ShopifyAppBridgeProvider({ children }) {
     }
   }, [shop, host]);
 
-  // Initialize App Bridge instance for API client
+  // Set App Bridge instance for API client when available
   useEffect(() => {
-    // App Bridge is initialized by the CDN script
-    // Access it via the global shopify object
-    if (window.shopify?.app) {
-      setAppBridgeInstance(window.shopify.app);
-    } else {
-      // Wait for App Bridge to initialize
-      const checkAppBridge = setInterval(() => {
-        if (window.shopify?.app) {
-          setAppBridgeInstance(window.shopify.app);
-          clearInterval(checkAppBridge);
-        }
-      }, 100);
-
-      // Clean up after 5 seconds
-      setTimeout(() => clearInterval(checkAppBridge), 5000);
+    if (app) {
+      setAppBridgeInstance(app);
+      console.log('✅ App Bridge instance initialized for API client');
     }
-  }, []);
+  }, [app]);
 
   // If we don't have shop param, show marketing landing page
   if (!shop) {
     return <LandingPage />;
   }
 
+  // Just render children - no Provider wrapper needed in v4
   return <>{children}</>;
 }
