@@ -1,8 +1,6 @@
 # shopify.app.toml
-# App configuration for DigiKey HQ License Manager
-
 name = "DigiKey HQ"
-client_id = "YOUR_SHOPIFY_API_KEY"  # Replace with your actual API key from Partner Dashboard
+client_id = "5106276d12b769bee15b1016359e487c"
 application_url = "https://digikeyhq.com"
 embedded = true
 
@@ -17,19 +15,23 @@ redirect_urls = [
 [webhooks]
 api_version = "2025-10"
 
-# CRITICAL: Compliance webhooks for GDPR
+# GDPR compliance webhooks - MUST use full HTTPS URLs
 [[webhooks.subscriptions]]
-compliance_topics = [
-  "customers/data_request",
-  "customers/redact", 
-  "shop/redact"
-]
-uri = "/webhooks/gdpr"
+compliance_topics = ["customers/data_request"]
+uri = "https://api.digikeyhq.com/webhooks/gdpr/customers/data_request"
 
-# Order webhooks for license delivery
+[[webhooks.subscriptions]]
+compliance_topics = ["customers/redact"]
+uri = "https://api.digikeyhq.com/webhooks/gdpr/customers/redact"
+
+[[webhooks.subscriptions]]
+compliance_topics = ["shop/redact"]
+uri = "https://api.digikeyhq.com/webhooks/gdpr/shop/redact"
+
+# Order webhooks
 [[webhooks.subscriptions]]
 topics = ["orders/create"]
-uri = "/webhooks/orders/create"
+uri = "https://api.digikeyhq.com/webhooks/orders/create"
 
 [pos]
 embedded = false
