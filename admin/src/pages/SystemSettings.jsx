@@ -46,7 +46,7 @@ export default function SystemSettings() {
         notify_on_out_of_stock: Boolean(settingsData.notify_on_out_of_stock),
         notify_on_uniqueness_issue: Boolean(settingsData.notify_on_uniqueness_issue),
         notify_on_low_stock: Boolean(settingsData.notify_on_low_stock),
-        low_stock_threshold: settingsData.low_stock_threshold || 10
+        low_stock_threshold: settingsData.low_stock_threshold || 5
       };
 
       setSettings(normalizedSettings);
@@ -101,7 +101,7 @@ export default function SystemSettings() {
         notify_on_out_of_stock: Boolean(resetSettings.notify_on_out_of_stock),
         notify_on_uniqueness_issue: Boolean(resetSettings.notify_on_uniqueness_issue),
         notify_on_low_stock: Boolean(resetSettings.notify_on_low_stock),
-        low_stock_threshold: resetSettings.low_stock_threshold || 10
+        low_stock_threshold: resetSettings.low_stock_threshold || 5
       };
 
       setSettings(normalizedSettings);
@@ -553,8 +553,8 @@ export default function SystemSettings() {
                     <input
                       type="number"
                       min="0"
-                      value={settings.low_stock_threshold || 10}
-                      onChange={(e) => updateSetting('low_stock_threshold', parseInt(e.target.value) || 10)}
+                      value={settings.low_stock_threshold || 5}
+                      onChange={(e) => updateSetting('low_stock_threshold', parseInt(e.target.value) || 5)}
                       className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                     <p className="mt-1 text-sm text-gray-600">
