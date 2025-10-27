@@ -150,8 +150,45 @@ function ProductLicenses() {
 
     try {
       setUploading(true);
-      await adminAPI.uploadLicenses(productId, parsedLicenses);
-      alert(`Successfully uploaded ${parsedLicenses.length} licenses!`);
+      const response = await adminAPI.uploadLicenses(productId, parsedLicenses);
+      const data = response.data;
+
+      // Build detailed message
+      let message = '';
+      if (data.uniqueness_enforced) {
+        // Detailed breakdown when uniqueness is enforced
+        const parts = [];
+        if (data.uploaded > 0) {
+          parts.push(`✓ Uploaded ${data.uploaded} unique license${data.uploaded !== 1 ? 's' : ''}`);
+        }
+        if (data.duplicates_in_batch > 0) {
+          parts.push(`⚠️ Skipped ${data.duplicates_in_batch} duplicate${data.duplicates_in_batch !== 1 ? 's' : ''} within upload`);
+        }
+        if (data.duplicates_in_database > 0) {
+          parts.push(`⚠️ Skipped ${data.duplicates_in_database} duplicate${data.duplicates_in_database !== 1 ? 's' : ''} already in database`);
+        }
+
+        message = parts.join('\n\n');
+
+        // Add samples if available
+        if (data.sample_batch_duplicates?.length > 0) {
+          message += `\n\nSample duplicates in upload:\n${data.sample_batch_duplicates.join(', ')}`;
+        }
+        if (data.sample_db_duplicates?.length > 0) {
+          message += `\n\nSample duplicates already in DB:\n${data.sample_db_duplicates.join(', ')}`;
+        }
+
+        // Show warning if no licenses were uploaded
+        if (data.uploaded === 0) {
+          alert(`⚠️ No licenses uploaded!\n\n${message}`);
+        } else {
+          alert(`Upload Complete!\n\n${message}`);
+        }
+      } else {
+        // Simple message when uniqueness is not enforced
+        alert(`Successfully uploaded ${data.uploaded} licenses!\n(Uniqueness validation is disabled)`);
+      }
+
       setShowUpload(false);
       setParsedLicenses([]);
       setFileName('');
@@ -159,7 +196,7 @@ function ProductLicenses() {
       await loadData();
     } catch (error) {
       console.error('Upload failed:', error);
-      alert('Failed to upload licenses');
+      alert('Failed to upload licenses: ' + (error.response?.data?.error || error.message));
     } finally {
       setUploading(false);
     }

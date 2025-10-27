@@ -906,20 +906,106 @@ router.post('/products/:productId/licenses/upload', async (req, res) => {
       return res.status(400).json({ error: 'No licenses provided' });
     }
 
-    // Insert licenses
-    const values = licenses.map(key => [productId, key]);
-    const placeholders = values.map(() => '(?, ?)').join(', ');
-
-    await db.execute(
-      `INSERT INTO licenses (product_id, license_key) VALUES ${placeholders}`,
-      values.flat()
+    // Get shop_id from product to fetch settings
+    const [products] = await db.execute(
+      'SELECT shop_id FROM products WHERE id = ?',
+      [productId]
     );
 
-    res.json({ 
-      success: true, 
-      uploaded: licenses.length,
-      message: `Uploaded ${licenses.length} licenses` 
-    });
+    if (products.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    const shopId = products[0].shop_id;
+    const settings = await getShopSettings(shopId);
+
+    let licensesToUpload = licenses;
+    let duplicatesInBatch = [];
+    let duplicatesInDB = [];
+
+    // If enforce_unique_licenses is enabled, check for duplicates
+    if (settings.enforce_unique_licenses) {
+      // Step 1: Remove duplicates within the batch itself
+      const uniqueLicensesSet = new Set();
+      const batchDuplicates = [];
+
+      for (const license of licenses) {
+        if (uniqueLicensesSet.has(license)) {
+          batchDuplicates.push(license);
+        } else {
+          uniqueLicensesSet.add(license);
+        }
+      }
+
+      duplicatesInBatch = batchDuplicates;
+      licensesToUpload = Array.from(uniqueLicensesSet);
+
+      // Step 2: Check against existing licenses in database for this product
+      if (licensesToUpload.length > 0) {
+        const placeholders = licensesToUpload.map(() => '?').join(', ');
+        const [existingLicenses] = await db.execute(
+          `SELECT DISTINCT license_key FROM licenses
+           WHERE product_id = ? AND license_key IN (${placeholders})`,
+          [productId, ...licensesToUpload]
+        );
+
+        if (existingLicenses.length > 0) {
+          const existingKeys = new Set(existingLicenses.map(l => l.license_key));
+          duplicatesInDB = licensesToUpload.filter(key => existingKeys.has(key));
+          licensesToUpload = licensesToUpload.filter(key => !existingKeys.has(key));
+        }
+      }
+    }
+
+    // Insert only unique licenses
+    let uploaded = 0;
+    if (licensesToUpload.length > 0) {
+      const values = licensesToUpload.map(key => [productId, key]);
+      const placeholders = values.map(() => '(?, ?)').join(', ');
+
+      await db.execute(
+        `INSERT INTO licenses (product_id, license_key) VALUES ${placeholders}`,
+        values.flat()
+      );
+      uploaded = licensesToUpload.length;
+    }
+
+    // Prepare response with detailed information
+    const response = {
+      success: true,
+      uploaded,
+      total_submitted: licenses.length,
+      duplicates_in_batch: duplicatesInBatch.length,
+      duplicates_in_database: duplicatesInDB.length,
+      uniqueness_enforced: settings.enforce_unique_licenses
+    };
+
+    // Add detailed message
+    if (settings.enforce_unique_licenses) {
+      const messages = [];
+      if (uploaded > 0) {
+        messages.push(`✓ Uploaded ${uploaded} unique license${uploaded !== 1 ? 's' : ''}`);
+      }
+      if (duplicatesInBatch.length > 0) {
+        messages.push(`⚠ Skipped ${duplicatesInBatch.length} duplicate${duplicatesInBatch.length !== 1 ? 's' : ''} within upload`);
+      }
+      if (duplicatesInDB.length > 0) {
+        messages.push(`⚠ Skipped ${duplicatesInDB.length} duplicate${duplicatesInDB.length !== 1 ? 's' : ''} already in database`);
+      }
+      response.message = messages.join('\n');
+
+      // Include sample duplicates for debugging (limit to 5)
+      if (duplicatesInBatch.length > 0) {
+        response.sample_batch_duplicates = duplicatesInBatch.slice(0, 5);
+      }
+      if (duplicatesInDB.length > 0) {
+        response.sample_db_duplicates = duplicatesInDB.slice(0, 5);
+      }
+    } else {
+      response.message = `Uploaded ${uploaded} licenses (uniqueness validation disabled)`;
+    }
+
+    res.json(response);
 
   } catch (error) {
     console.error('License upload error:', error);

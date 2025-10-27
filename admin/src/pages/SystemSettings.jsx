@@ -251,14 +251,24 @@ export default function SystemSettings() {
                     <div>
                       <div className="font-medium text-gray-900">Enforce unique licenses for product</div>
                       <div className="text-sm text-gray-600">
-                        Ensures all licenses allocated for a product are unique. If disabled, duplicate licenses can be sent.
+                        {settings.enforce_unique_licenses ? (
+                          <>
+                            Ensures all licenses are unique. Duplicate licenses will be rejected during upload,
+                            and only unique licenses will be allocated to orders.
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-amber-700 font-medium">⚠️ Warning:</span> Products may contain duplicate licenses.
+                            The same license key could be sent to multiple customers.
+                          </>
+                        )}
                       </div>
                     </div>
                   </label>
 
                   {/* Nested option - only show when enforce_unique_licenses is FALSE */}
                   {!settings.enforce_unique_licenses && (
-                    <div className="ml-7 mt-3 pl-4 border-l-2 border-gray-300">
+                    <div className="ml-7 mt-3 pl-4 border-l-2 border-amber-400">
                       <label className="flex items-start gap-3 cursor-pointer">
                         <input
                           type="checkbox"
@@ -269,7 +279,7 @@ export default function SystemSettings() {
                         <div>
                           <div className="font-medium text-gray-900">Prevent duplicate licenses in same order</div>
                           <div className="text-sm text-gray-600">
-                            Even without enforcing global uniqueness, prevent the same order from receiving duplicate license keys.
+                            Even without global uniqueness, each order will receive unique license keys (no duplicates within the same order).
                           </div>
                         </div>
                       </label>
@@ -278,10 +288,28 @@ export default function SystemSettings() {
                 </div>
               </div>
 
-              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <strong>Note:</strong> If uniqueness is enforced and a customer orders 2 licenses but only 1 unique license exists,
-                  they will receive only 1 license. The remaining quantity will follow the out-of-stock behavior below.
+              {/* Info box */}
+              <div className={`mt-3 p-3 rounded-lg border ${
+                settings.enforce_unique_licenses
+                  ? 'bg-blue-50 border-blue-200'
+                  : 'bg-amber-50 border-amber-200'
+              }`}>
+                <p className={`text-sm ${
+                  settings.enforce_unique_licenses
+                    ? 'text-blue-800'
+                    : 'text-amber-800'
+                }`}>
+                  <strong>Note:</strong> {settings.enforce_unique_licenses ? (
+                    <>
+                      When a customer orders more licenses than unique ones available, they will receive only the unique licenses.
+                      The remaining quantity will follow the out-of-stock behavior below, and you will be notified via email if notifications are enabled.
+                    </>
+                  ) : (
+                    <>
+                      Without uniqueness enforcement, the same license key may be allocated to multiple customers.
+                      {settings.enforce_unique_per_order && ' However, each individual order will still receive unique keys (no duplicates within one order).'}
+                    </>
+                  )}
                 </p>
               </div>
             </div>
