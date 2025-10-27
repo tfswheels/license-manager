@@ -343,7 +343,7 @@ export async function manualAllocate(orderId) {
         settings
       );
 
-      const { licenses } = allocationResult;
+      const { licenses, uniquenessIssue } = allocationResult;
 
       if (licenses.length > 0) {
         await connection.execute(
@@ -379,6 +379,18 @@ export async function manualAllocate(orderId) {
           `UPDATE order_items SET email_sent = TRUE, email_sent_at = NOW() WHERE id = ?`,
           [item.id]
         );
+
+        // Check for low stock alerts after allocation
+        await checkInventoryAlerts(connection, item.product_id, shopId);
+
+        // Send notification if uniqueness caused partial allocation
+        if (uniquenessIssue && settings.notify_on_uniqueness_issue && settings.notification_email) {
+          await sendNotificationEmail({
+            to: settings.notification_email,
+            subject: `License Uniqueness Issue - Order ${item.order_number}`,
+            message: `Order ${item.order_number} requested ${needed} licenses for "${item.product_name}" but only ${licenses.length} unique licenses were available.`
+          });
+        }
       }
     }
 
