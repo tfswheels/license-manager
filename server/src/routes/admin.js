@@ -6,6 +6,7 @@ import Papa from 'papaparse';
 import sgMail from '@sendgrid/mail';
 import { manualAllocate } from '../services/orderService.js';
 import { sendLicenseEmail } from '../services/emailService.js';
+import { checkInventoryAlerts } from '../services/inventoryService.js';
 import {
   getShopTemplates,
   setDefaultTemplate,
@@ -1451,6 +1452,9 @@ router.post('/orders/manual-send', async (req, res) => {
       `UPDATE order_items SET email_sent = TRUE, email_sent_at = NOW() WHERE id = ?`,
       [orderItemId]
     );
+
+    // Check for low inventory alerts
+    await checkInventoryAlerts(connection, productId, product.shop_id);
 
     await connection.commit();
 

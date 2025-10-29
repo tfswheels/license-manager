@@ -379,6 +379,9 @@ export async function manualAllocate(orderId) {
           `UPDATE order_items SET email_sent = TRUE, email_sent_at = NOW() WHERE id = ?`,
           [item.id]
         );
+
+        // Check for low inventory alerts
+        await checkInventoryAlerts(connection, item.product_id, shopId);
       }
     }
 

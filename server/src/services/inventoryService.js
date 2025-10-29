@@ -16,7 +16,7 @@ export async function checkInventoryAlerts(connection, productId, shopId) {
       return;
     }
 
-    const threshold = shopSettings[0].low_stock_threshold || 10;
+    const threshold = shopSettings[0].low_stock_threshold || 5;
     const notificationEmail = shopSettings[0].notification_email;
 
     // Skip if no notification email is configured

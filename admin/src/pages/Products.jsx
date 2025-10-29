@@ -11,6 +11,7 @@ function Products() {
   const [products, setProducts] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [shopId, setShopId] = useState(null);
+  const [settings, setSettings] = useState({ low_stock_threshold: 5 });
   const [loading, setLoading] = useState(true);
   const [showSelector, setShowSelector] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -43,13 +44,15 @@ function Products() {
 
       setShopId(currentShopId);
 
-      const [productsRes, templatesRes] = await Promise.all([
+      const [productsRes, templatesRes, settingsRes] = await Promise.all([
         adminAPI.getProducts(currentShopId),
         adminAPI.getTemplates(currentShopId),
+        adminAPI.getShopSettings(currentShopId),
       ]);
 
       setProducts(productsRes.data);
       setTemplates(templatesRes.data);
+      setSettings(settingsRes.data);
 
       // Reset selection when data reloads
       setSelectedProducts(new Set());
@@ -356,7 +359,8 @@ function Products() {
                 {currentPageProducts.map((product) => {
                   const availableCount = product.available_licenses || 0;
                   const totalCount = product.total_licenses || 0;
-                  const isLow = availableCount < 10 && totalCount > 0;
+                  const lowStockThreshold = settings.low_stock_threshold || 5;
+                  const isLow = availableCount <= lowStockThreshold && availableCount > 0 && totalCount > 0;
                   const isSelected = selectedProducts.has(product.id);
                   const defaultTemplate = templates.find(t => t.is_default);
 
@@ -461,7 +465,8 @@ function Products() {
             {currentPageProducts.map((product) => {
               const availableCount = product.available_licenses || 0;
               const totalCount = product.total_licenses || 0;
-              const isLow = availableCount < 10 && totalCount > 0;
+              const lowStockThreshold = settings.low_stock_threshold || 5;
+              const isLow = availableCount <= lowStockThreshold && availableCount > 0 && totalCount > 0;
               const isSelected = selectedProducts.has(product.id);
               const defaultTemplate = templates.find(t => t.is_default);
 
