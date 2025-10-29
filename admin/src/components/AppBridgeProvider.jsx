@@ -17,13 +17,18 @@ export default function ShopifyAppBridgeProvider({ children }) {
   // Get App Bridge instance from CDN-initialized App Bridge
   const app = useAppBridge();
 
-  // Get shop from URL query params or sessionStorage
+  // Get shop from URL query params, sessionStorage, or localStorage
   const params = new URLSearchParams(location.search);
   let shop = params.get('shop');
 
-  // If not in URL, try sessionStorage
+  // If not in URL, try sessionStorage first
   if (!shop) {
     shop = sessionStorage.getItem('shopify_shop');
+  }
+
+  // If still not found, try localStorage as fallback
+  if (!shop) {
+    shop = localStorage.getItem('shopify_shop');
   }
 
   // Ensure shop domain has .myshopify.com suffix
@@ -31,19 +36,25 @@ export default function ShopifyAppBridgeProvider({ children }) {
     shop = `${shop}.myshopify.com`;
   }
 
-  // Get host from URL query params or sessionStorage (required for embedded apps)
+  // Get host from URL query params, sessionStorage, or localStorage (required for embedded apps)
   let host = params.get('host');
   if (!host) {
     host = sessionStorage.getItem('shopify_host');
   }
+  if (!host) {
+    host = localStorage.getItem('shopify_host');
+  }
 
-  // Store shop and host in sessionStorage when they're available
+  // Store shop and host in both sessionStorage and localStorage for persistence
   useEffect(() => {
     if (shop) {
       sessionStorage.setItem('shopify_shop', shop);
+      localStorage.setItem('shopify_shop', shop);
+      console.log(`✅ Shop domain stored: ${shop}`);
     }
     if (host) {
       sessionStorage.setItem('shopify_host', host);
+      localStorage.setItem('shopify_host', host);
     }
   }, [shop, host]);
 
