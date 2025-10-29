@@ -137,7 +137,19 @@ export default function ManualSendModal({ isOpen, onClose, product, onSuccess })
               min="1"
               max={product.available_licenses || 1}
               value={quantity}
-              onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === '' || val === null) {
+                  setQuantity('');
+                } else {
+                  setQuantity(parseInt(val) || 1);
+                }
+              }}
+              onBlur={(e) => {
+                if (e.target.value === '' || parseInt(e.target.value) < 1) {
+                  setQuantity(1);
+                }
+              }}
               className="input w-full"
               required
               disabled={sending}

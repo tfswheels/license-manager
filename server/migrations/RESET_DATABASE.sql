@@ -164,11 +164,13 @@ CREATE TABLE email_logs (
 CREATE TABLE inventory_alerts (
   id INT AUTO_INCREMENT PRIMARY KEY,
   product_id INT NOT NULL,
-  alert_threshold INT DEFAULT 10,
-  last_alert_sent TIMESTAMP NULL,
+  available_count INT NOT NULL,
+  threshold INT NOT NULL,
+  alert_sent BOOLEAN DEFAULT FALSE,
+  alert_sent_at TIMESTAMP NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
-  INDEX idx_product (product_id)
+  INDEX idx_product_alert (product_id, alert_sent)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================
@@ -217,6 +219,8 @@ CREATE TABLE shop_settings (
   notification_email VARCHAR(255) DEFAULT NULL COMMENT 'Admin email for notifications',
   notify_on_out_of_stock BOOLEAN DEFAULT FALSE,
   notify_on_uniqueness_issue BOOLEAN DEFAULT FALSE,
+  notify_on_low_stock BOOLEAN DEFAULT TRUE COMMENT 'Send alert when licenses fall below threshold',
+  low_stock_threshold INT DEFAULT 5 COMMENT 'Minimum available licenses before alert is sent',
 
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
