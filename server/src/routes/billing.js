@@ -102,11 +102,13 @@ router.get('/callback', async (req, res) => {
     if (subscription.status === 'ACTIVE') {
       console.log(`✅ Subscription activated for ${shop}: ${subscription.name}`);
       // Redirect to app with success message
-      res.redirect(`https://license-manager-lovat.vercel.app?shop=${shop}&billing=success`);
+      const frontendUrl = process.env.FRONTEND_URL || 'https://digikeyhq.com';
+      res.redirect(`${frontendUrl}?shop=${shop}&billing=success`);
     } else {
       console.warn(`⚠️ Subscription not active: ${subscription.status}`);
       // Redirect with pending status
-      res.redirect(`https://license-manager-lovat.vercel.app?shop=${shop}&billing=pending`);
+      const frontendUrl = process.env.FRONTEND_URL || 'https://digikeyhq.com';
+      res.redirect(`${frontendUrl}?shop=${shop}&billing=pending`);
     }
 
   } catch (error) {
