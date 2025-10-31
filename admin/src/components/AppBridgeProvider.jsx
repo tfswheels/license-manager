@@ -1,18 +1,19 @@
 // admin/src/components/AppBridgeProvider.jsx
 import React, { useEffect } from 'react';
 import { useAppBridge } from '@shopify/app-bridge-react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import LandingPage from '../pages/LandingPage';
 import { setAppBridgeInstance } from '../utils/api';
 
 export default function ShopifyAppBridgeProvider({ children }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const app = useAppBridge();
   
   const params = new URLSearchParams(location.search);
   let shop = params.get('shop');
   let host = params.get('host');
-  const installing = params.get('installing'); // NEW: Check if just completed OAuth
+  const installing = params.get('installing');
 
   // If not in URL, try sessionStorage first
   if (!shop) {
@@ -37,7 +38,7 @@ export default function ShopifyAppBridgeProvider({ children }) {
     host = localStorage.getItem('shopify_host');
   }
 
-  // NEW: Check if shop is installed in database
+  // Check if shop is installed in database
   const [isChecking, setIsChecking] = React.useState(false);
   const [hasChecked, setHasChecked] = React.useState(false);
 
@@ -71,6 +72,25 @@ export default function ShopifyAppBridgeProvider({ children }) {
         }
         
         console.log('✅ Shop is installed, proceeding normally');
+        
+        // IMPORTANT: If we just finished installing, remove the 'installing' param
+        if (installing === 'true') {
+          console.log('🔄 Removing installing parameter from URL');
+          // Build new URL without 'installing' param
+          const newParams = new URLSearchParams(location.search);
+          newParams.delete('installing');
+          
+          // Navigate to clean URL
+          const newSearch = newParams.toString();
+          const newPath = location.pathname + (newSearch ? `?${newSearch}` : '');
+          
+          // Replace URL without reloading page
+          window.history.replaceState({}, '', newPath);
+          
+          // Force re-render by updating state
+          setHasChecked(true);
+        }
+        
       } catch (error) {
         console.error('❌ Error checking install status:', error);
         // Don't block the app if the check fails, just log it
@@ -81,7 +101,7 @@ export default function ShopifyAppBridgeProvider({ children }) {
     };
     
     checkAndRedirectIfNeeded();
-  }, [shop, hasChecked, isChecking]);
+  }, [shop, hasChecked, isChecking, installing, location.pathname, location.search]);
 
   // Store shop and host in both sessionStorage and localStorage for persistence
   useEffect(() => {
@@ -109,8 +129,8 @@ export default function ShopifyAppBridgeProvider({ children }) {
     return <LandingPage />;
   }
 
-  // NEW: Show installation complete message if just finished OAuth
-  if (installing === 'true' || isChecking) {
+  // Show installation/checking state ONLY if checking OR installing param present
+  if (isChecking || (installing === 'true' && !hasChecked)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="text-center p-8 bg-white rounded-2xl shadow-xl max-w-md">
