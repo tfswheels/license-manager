@@ -1,7 +1,6 @@
 // admin/src/components/AppBridgeProvider.jsx
 import React, { useEffect } from 'react';
 import { useAppBridge } from '@shopify/app-bridge-react';
-import { Redirect } from '@shopify/app-bridge/actions';
 import { useLocation } from 'react-router-dom';
 import LandingPage from '../pages/LandingPage';
 import { setAppBridgeInstance } from '../utils/api';
@@ -55,9 +54,6 @@ export default function ShopifyAppBridgeProvider({ children }) {
       // Only check if we have a shop parameter
       if (!shop) return;
       
-      // Need App Bridge instance for redirect
-      if (!app) return;
-      
       setIsChecking(true);
       
       try {
@@ -70,13 +66,12 @@ export default function ShopifyAppBridgeProvider({ children }) {
         if (!data.installed) {
           console.log('⚠️ Shop not installed in database, redirecting to OAuth...');
           
-          // IMPORTANT: Use App Bridge Redirect to break out of iframe
-          // window.location.href won't work inside Shopify Admin iframe
-          const redirect = Redirect.create(app);
           const authUrl = `${import.meta.env.VITE_API_URL}/auth/install?shop=${shop}`;
-          
           console.log('🔄 Redirecting to:', authUrl);
-          redirect.dispatch(Redirect.Action.REMOTE, authUrl);
+          
+          // CRITICAL: Use window.open with _top to break out of iframe
+          // This is the correct way for embedded apps to redirect externally
+          window.open(authUrl, '_top');
           
           return; // Don't continue rendering
         }
@@ -92,7 +87,7 @@ export default function ShopifyAppBridgeProvider({ children }) {
     };
     
     checkAndRedirectIfNeeded();
-  }, [shop, app, hasChecked, isChecking]);
+  }, [shop, hasChecked, isChecking]);
 
   // Store shop and host in both sessionStorage and localStorage for persistence
   useEffect(() => {
