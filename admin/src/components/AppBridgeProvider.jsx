@@ -21,6 +21,20 @@ export default function ShopifyAppBridgeProvider({ children }) {
   const params = new URLSearchParams(location.search);
   let shop = params.get('shop');
 
+  // IMPORTANT: If shop is in URL, clear any cached values that don't match
+  // This prevents stale shop data from interfering with new installations
+  if (shop) {
+    const cachedShop = localStorage.getItem('shopify_shop');
+    if (cachedShop && cachedShop !== shop) {
+      console.warn(`⚠️ Shop mismatch detected! URL: ${shop}, Cached: ${cachedShop}`);
+      console.log('🧹 Clearing stale shop data from storage');
+      localStorage.removeItem('shopify_shop');
+      sessionStorage.removeItem('shopify_shop');
+      localStorage.removeItem('currentShopId');
+      sessionStorage.removeItem('currentShopId');
+    }
+  }
+
   // If not in URL, try sessionStorage first
   if (!shop) {
     shop = sessionStorage.getItem('shopify_shop');

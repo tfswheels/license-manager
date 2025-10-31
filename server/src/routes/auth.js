@@ -8,13 +8,21 @@ router.get('/install', async (req, res) => {
   try {
     const { shop } = req.query;
 
+    console.log('🔵 INSTALL - Full query params:', req.query);
+    console.log('🔵 INSTALL - Referrer:', req.get('referer'));
+    console.log('🔵 INSTALL - Host:', req.get('host'));
+
     if (!shop) {
+      console.error('❌ INSTALL - Missing shop parameter!');
       return res.status(400).json({ error: 'Missing shop parameter' });
     }
 
-    const shopDomain = shop.includes('.myshopify.com') 
-      ? shop 
+    const shopDomain = shop.includes('.myshopify.com')
+      ? shop
       : `${shop}.myshopify.com`;
+
+    console.log(`🔵 INSTALL - Shop parameter: ${shop}`);
+    console.log(`🔵 INSTALL - Normalized shop domain: ${shopDomain}`);
 
     await shopify.auth.begin({
       shop: shopDomain,
@@ -35,10 +43,12 @@ router.get('/install', async (req, res) => {
 
 router.get('/callback', async (req, res) => {
   console.log('🔵 CALLBACK HIT - Query params:', req.query);
-  
+  console.log('🔵 CALLBACK - Referrer:', req.get('referer'));
+  console.log('🔵 CALLBACK - User-Agent:', req.get('user-agent'));
+
   try {
     console.log('🔵 Starting shopify.auth.callback...');
-    
+
     const callback = await shopify.auth.callback({
       rawRequest: req,
       rawResponse: res
@@ -49,7 +59,15 @@ router.get('/callback', async (req, res) => {
     const { session } = callback;
     const { shop, accessToken } = session;
 
-    console.log('🔵 Shop:', shop);
+    console.log('🔵 Shop from session:', shop);
+    console.log('🔵 Shop from query:', req.query.shop);
+
+    // CRITICAL: Verify the shop from the session matches the shop in the callback
+    if (req.query.shop && req.query.shop !== shop) {
+      console.error(`❌ SHOP MISMATCH! Query: ${req.query.shop}, Session: ${shop}`);
+      throw new Error(`Shop mismatch detected: query has ${req.query.shop} but session has ${shop}`);
+    }
+
     console.log('🔵 Token preview:', accessToken?.substring(0, 20) + '...');
     console.log('🔵 Scopes:', session.scope);
 
