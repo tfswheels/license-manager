@@ -78,8 +78,10 @@ export default function ShopifyAppBridgeProvider({ children }) {
         if (!data.installed) {
           if (installing === 'true') {
             // OAuth already happened (we have installing param), just waiting for DB sync
+            // Keep loading screen showing by NOT setting isInitialCheck to false
             console.log('⏳ Installation in progress, waiting for database sync...');
             setIsChecking(false);
+            setHasChecked(true);
             // Poll again after 1.5 seconds
             setTimeout(() => {
               checkAndRedirectIfNeeded();
@@ -101,8 +103,9 @@ export default function ShopifyAppBridgeProvider({ children }) {
 
         console.log('✅ Shop is installed, proceeding normally');
 
-        // Mark installation as complete - this will allow app to render
+        // Mark installation as complete and allow app to render
         setIsInstallingComplete(true);
+        setIsInitialCheck(false);
 
       } catch (error) {
         console.error('❌ Error checking install status:', error);
@@ -115,8 +118,11 @@ export default function ShopifyAppBridgeProvider({ children }) {
       } finally {
         setIsChecking(false);
         setHasChecked(true);
-        // Mark initial check as complete
-        setIsInitialCheck(false);
+        // Only mark initial check complete if we're not in installing mode
+        // During installation, keep blocking until shop is confirmed in DB
+        if (installing !== 'true') {
+          setIsInitialCheck(false);
+        }
       }
     };
 
