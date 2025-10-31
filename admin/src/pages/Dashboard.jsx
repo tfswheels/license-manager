@@ -24,17 +24,11 @@ function Dashboard() {
       const shopId = await getCurrentShopId();
 
       if (!shopId) {
-      // Instead of showing error immediately, wait a bit for OAuth to complete
-      console.log('⏳ Waiting for shop installation to complete...');
-      
-      // Retry after a short delay
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
-      
-      setError('Initializing your account, please wait...');
-      return;
-    }
+        // This should not happen if AppBridgeProvider did its job, but handle gracefully
+        console.error('❌ Shop ID not found');
+        setError('Unable to load shop information. Please try refreshing the page.');
+        return;
+      }
 
       console.log('Loading dashboard data for shop:', shopId);
 
