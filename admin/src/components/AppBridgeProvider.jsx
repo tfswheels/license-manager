@@ -45,11 +45,15 @@ export default function ShopifyAppBridgeProvider({ children }) {
 
   useEffect(() => {
     const checkAndRedirectIfNeeded = async () => {
-      // Only check once per page load (unless we're waiting for installation to complete)
-      if ((hasChecked || isChecking) && installing !== 'true') return;
-
       // Only check if we have a shop parameter
       if (!shop) return;
+
+      // Skip if already complete
+      if (isInstallingComplete) return;
+
+      // If we're installing, always check (poll until ready)
+      // Otherwise, only check once
+      if (!installing && hasChecked) return;
 
       setIsChecking(true);
 
@@ -64,12 +68,12 @@ export default function ShopifyAppBridgeProvider({ children }) {
           // If we're coming back from OAuth (installing=true) but shop not found yet,
           // keep polling instead of redirecting again
           if (installing === 'true') {
-            console.log('⏳ Installation in progress, polling...');
+            console.log('⏳ Installation in progress, will retry...');
             setIsChecking(false);
-            // Poll again after 1 second
+            // Poll again after 1.5 seconds
             setTimeout(() => {
-              setHasChecked(false);
-            }, 1000);
+              checkAndRedirectIfNeeded();
+            }, 1500);
             return;
           }
 
@@ -86,28 +90,17 @@ export default function ShopifyAppBridgeProvider({ children }) {
 
         console.log('✅ Shop is installed, proceeding normally');
 
-        // If we just finished installing, clean up the URL and allow app to load
-        if (installing === 'true') {
-          console.log('🔄 Installation complete, removing installing parameter from URL');
-
-          // Build new URL without 'installing' param
-          const newParams = new URLSearchParams(location.search);
-          newParams.delete('installing');
-
-          // Navigate to clean URL
-          const newSearch = newParams.toString();
-          const newPath = location.pathname + (newSearch ? `?${newSearch}` : '');
-
-          // Replace URL without reloading page
-          window.history.replaceState({}, '', newPath);
-
-          // Mark installation as complete
-          setIsInstallingComplete(true);
-        }
+        // Mark installation as complete - this will allow app to render
+        setIsInstallingComplete(true);
 
       } catch (error) {
         console.error('❌ Error checking install status:', error);
-        // Don't block the app if the check fails, just log it
+        // If installing, retry on error
+        if (installing === 'true') {
+          setTimeout(() => {
+            checkAndRedirectIfNeeded();
+          }, 2000);
+        }
       } finally {
         setIsChecking(false);
         setHasChecked(true);
@@ -115,7 +108,7 @@ export default function ShopifyAppBridgeProvider({ children }) {
     };
 
     checkAndRedirectIfNeeded();
-  }, [shop, hasChecked, isChecking, installing, location.pathname, location.search]);
+  }, [shop, installing]); // Minimal dependencies to avoid re-trigger loops
 
   // Store shop and host in both sessionStorage and localStorage for persistence
   useEffect(() => {
@@ -143,8 +136,9 @@ export default function ShopifyAppBridgeProvider({ children }) {
     return <LandingPage />;
   }
 
-  // Show installation/checking state while we're verifying or setting up
-  if (isChecking || (installing === 'true' && !isInstallingComplete)) {
+  // Show installation/checking state during setup
+  // Block rendering until installation is verified complete
+  if (installing === 'true' && !isInstallingComplete) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="text-center p-8 bg-white rounded-2xl shadow-xl max-w-md">
@@ -152,12 +146,10 @@ export default function ShopifyAppBridgeProvider({ children }) {
             <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto"></div>
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-3">
-            {installing === 'true' ? 'Setting Up Your Account' : 'Initializing'}
+            Setting Up Your Account
           </h2>
           <p className="text-gray-600 mb-2">
-            {installing === 'true'
-              ? 'Please wait while we configure your app...'
-              : 'Checking installation status...'}
+            Please wait while we complete your installation...
           </p>
           <div className="mt-6 flex items-center justify-center gap-2 text-sm text-gray-500">
             <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
