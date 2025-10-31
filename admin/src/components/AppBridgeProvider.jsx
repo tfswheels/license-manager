@@ -1,9 +1,10 @@
 // admin/src/components/AppBridgeProvider.jsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppBridge } from '@shopify/app-bridge-react';
 import { useLocation } from 'react-router-dom';
 import LandingPage from '../pages/LandingPage';
 import { setAppBridgeInstance } from '../utils/api';
+import axios from 'axios';
 
 /**
  * Shopify App Bridge Provider (v4)
@@ -13,6 +14,7 @@ import { setAppBridgeInstance } from '../utils/api';
  */
 export default function ShopifyAppBridgeProvider({ children }) {
   const location = useLocation();
+  const [isCheckingInstallation, setIsCheckingInstallation] = useState(true);
 
   // Get App Bridge instance from CDN-initialized App Bridge
   const app = useAppBridge();
@@ -80,9 +82,64 @@ export default function ShopifyAppBridgeProvider({ children }) {
     }
   }, [app]);
 
+  // Check if shop is installed, if not redirect to OAuth
+  useEffect(() => {
+    async function checkInstallation() {
+      if (!shop) {
+        setIsCheckingInstallation(false);
+        return;
+      }
+
+      try {
+        console.log(`🔍 Checking if shop ${shop} is installed...`);
+
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+        const response = await axios.get(`${apiUrl}/auth/status?shop=${shop}`);
+
+        console.log('📊 Installation status:', response.data);
+
+        if (!response.data.installed) {
+          console.log(`⚠️ Shop ${shop} not installed, redirecting to OAuth...`);
+
+          // Redirect to OAuth install endpoint
+          const installUrl = `${apiUrl}/auth/install?shop=${shop}`;
+          console.log(`🔀 Redirecting to: ${installUrl}`);
+
+          window.location.href = installUrl;
+          return; // Don't set isCheckingInstallation to false, stay in loading state
+        }
+
+        console.log(`✅ Shop ${shop} is installed`);
+        setIsCheckingInstallation(false);
+      } catch (error) {
+        console.error('❌ Error checking installation status:', error);
+
+        // If we can't determine status, assume not installed and redirect to OAuth
+        console.log('⚠️ Could not verify installation, redirecting to OAuth...');
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+        const installUrl = `${apiUrl}/auth/install?shop=${shop}`;
+        window.location.href = installUrl;
+      }
+    }
+
+    checkInstallation();
+  }, [shop]);
+
   // If we don't have shop param, show marketing landing page
   if (!shop) {
     return <LandingPage />;
+  }
+
+  // Show loading state while checking installation
+  if (isCheckingInstallation) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Initializing app...</p>
+        </div>
+      </div>
+    );
   }
 
   // Just render children - no Provider wrapper needed in v4
