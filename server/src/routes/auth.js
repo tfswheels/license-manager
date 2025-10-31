@@ -91,7 +91,10 @@ router.get('/callback', async (req, res) => {
     // For embedded apps, redirect back to Shopify Admin to load the app in iframe
     // This ensures proper App Bridge initialization and avoids "page not found" errors
     const apiKey = process.env.SHOPIFY_API_KEY;
-    const redirectUrl = `https://${shop}/admin/apps/${apiKey}?installing=true`;
+
+    // Add a unique installation ID to track this specific installation in the frontend
+    const installId = Date.now();
+    const redirectUrl = `https://${shop}/admin/apps/${apiKey}?installing=true&install_id=${installId}`;
 
     console.log(`🔵 Redirecting to: ${redirectUrl}`);
     res.redirect(redirectUrl);

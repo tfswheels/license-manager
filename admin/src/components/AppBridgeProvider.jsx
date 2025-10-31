@@ -16,7 +16,25 @@ export default function ShopifyAppBridgeProvider({ children }) {
 
   let shop = urlParams.get('shop') || routerParams.get('shop');
   let host = urlParams.get('host') || routerParams.get('host');
-  const installing = urlParams.get('installing') || routerParams.get('installing');
+  let installing = urlParams.get('installing') || routerParams.get('installing');
+  const installId = urlParams.get('install_id') || routerParams.get('install_id');
+
+  // Persist installing state in sessionStorage
+  // This is critical because Shopify may not preserve query params when loading the iframe
+  if (installing === 'true' && installId) {
+    sessionStorage.setItem('shopify_installing', 'true');
+    sessionStorage.setItem('shopify_install_id', installId);
+  }
+
+  // Check sessionStorage if not in URL (iframe reload scenario)
+  if (!installing && sessionStorage.getItem('shopify_installing') === 'true') {
+    installing = 'true';
+    console.log('📦 Restored installing state from sessionStorage');
+  }
+
+  // CRITICAL: Block all rendering immediately if installing
+  // This must happen BEFORE any other logic
+  const shouldBlockRendering = installing === 'true';
 
   // If not in URL, try sessionStorage first
   if (!shop) {
@@ -93,6 +111,10 @@ export default function ShopifyAppBridgeProvider({ children }) {
 
         console.log('✅ Shop is installed, proceeding normally');
 
+        // Clear installing state from sessionStorage
+        sessionStorage.removeItem('shopify_installing');
+        sessionStorage.removeItem('shopify_install_id');
+
         // Mark installation as complete - this will allow app to render
         setIsInstallingComplete(true);
 
@@ -139,9 +161,11 @@ export default function ShopifyAppBridgeProvider({ children }) {
     return <LandingPage />;
   }
 
-  // Show installation/checking state during setup
-  // Block rendering until installation is verified complete
-  if (installing === 'true' && !isInstallingComplete) {
+  // CRITICAL: Block all rendering during installation to prevent error screens
+  // Show loading screen if:
+  // 1. We're in installation mode (installing=true in URL)
+  // 2. AND installation hasn't been verified complete yet
+  if (shouldBlockRendering && !isInstallingComplete) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="text-center p-8 bg-white rounded-2xl shadow-xl max-w-md">
