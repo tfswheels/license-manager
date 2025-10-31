@@ -24,10 +24,17 @@ function Dashboard() {
       const shopId = await getCurrentShopId();
 
       if (!shopId) {
-        setError('Unable to determine current shop. Please reload the app from Shopify Admin.');
-        setLoading(false);
-        return;
-      }
+      // Instead of showing error immediately, wait a bit for OAuth to complete
+      console.log('⏳ Waiting for shop installation to complete...');
+      
+      // Retry after a short delay
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+      
+      setError('Initializing your account, please wait...');
+      return;
+    }
 
       console.log('Loading dashboard data for shop:', shopId);
 

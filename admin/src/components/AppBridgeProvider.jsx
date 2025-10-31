@@ -5,12 +5,6 @@ import { useLocation } from 'react-router-dom';
 import LandingPage from '../pages/LandingPage';
 import { setAppBridgeInstance } from '../utils/api';
 
-/**
- * Shopify App Bridge Provider (v4)
- * In v4, App Bridge is initialized via the CDN script and meta tag in index.html
- * This component just handles shop detection and sets up the API client
- * No Provider wrapper needed - useAppBridge hook works with CDN-initialized instance
- */
 export default function ShopifyAppBridgeProvider({ children }) {
   const location = useLocation();
   const app = useAppBridge();
@@ -18,6 +12,7 @@ export default function ShopifyAppBridgeProvider({ children }) {
   const params = new URLSearchParams(location.search);
   let shop = params.get('shop');
   let host = params.get('host');
+  const installing = params.get('installing'); // NEW: Check if just completed OAuth
 
   // If not in URL, try sessionStorage first
   if (!shop) {
@@ -69,8 +64,7 @@ export default function ShopifyAppBridgeProvider({ children }) {
           const authUrl = `${import.meta.env.VITE_API_URL}/auth/install?shop=${shop}`;
           console.log('🔄 Redirecting to:', authUrl);
           
-          // CRITICAL: Use window.open with _top to break out of iframe
-          // This is the correct way for embedded apps to redirect externally
+          // Use window.open with _top to break out of iframe
           window.open(authUrl, '_top');
           
           return; // Don't continue rendering
@@ -115,13 +109,27 @@ export default function ShopifyAppBridgeProvider({ children }) {
     return <LandingPage />;
   }
 
-  // Show loading state while checking installation status
-  if (isChecking) {
+  // NEW: Show installation complete message if just finished OAuth
+  if (installing === 'true' || isChecking) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Checking installation...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="text-center p-8 bg-white rounded-2xl shadow-xl max-w-md">
+          <div className="mb-6">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto"></div>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">
+            {installing === 'true' ? 'Setting Up Your Account' : 'Initializing'}
+          </h2>
+          <p className="text-gray-600 mb-2">
+            {installing === 'true' 
+              ? 'Please wait while we configure your app...' 
+              : 'Checking installation status...'}
+          </p>
+          <div className="mt-6 flex items-center justify-center gap-2 text-sm text-gray-500">
+            <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+            <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+            <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+          </div>
         </div>
       </div>
     );
