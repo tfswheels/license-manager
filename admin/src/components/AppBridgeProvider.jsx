@@ -64,6 +64,10 @@ export default function ShopifyAppBridgeProvider({ children }) {
   const [hasChecked, setHasChecked] = React.useState(false);
   const [isInstallingComplete, setIsInstallingComplete] = React.useState(false);
 
+  // CRITICAL: Start with true to block rendering until first database check completes
+  // This prevents Dashboard from mounting and showing errors before we verify shop exists
+  const [isInitialCheck, setIsInitialCheck] = React.useState(true);
+
   useEffect(() => {
     const checkAndRedirectIfNeeded = async () => {
       // Only check if we have a shop parameter
@@ -129,6 +133,8 @@ export default function ShopifyAppBridgeProvider({ children }) {
       } finally {
         setIsChecking(false);
         setHasChecked(true);
+        // Mark initial check as complete
+        setIsInitialCheck(false);
       }
     };
 
@@ -161,11 +167,13 @@ export default function ShopifyAppBridgeProvider({ children }) {
     return <LandingPage />;
   }
 
-  // CRITICAL: Block all rendering during installation to prevent error screens
+  // CRITICAL: Block all rendering until we've verified shop status
   // Show loading screen if:
-  // 1. We're in installation mode (installing=true in URL)
-  // 2. AND installation hasn't been verified complete yet
-  if (shouldBlockRendering && !isInstallingComplete) {
+  // 1. Still doing initial database check (prevents Dashboard error on first render)
+  // 2. OR we're in installation mode and installation hasn't completed
+  const showLoadingScreen = isInitialCheck || (shouldBlockRendering && !isInstallingComplete);
+
+  if (showLoadingScreen) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="text-center p-8 bg-white rounded-2xl shadow-xl max-w-md">
@@ -173,10 +181,12 @@ export default function ShopifyAppBridgeProvider({ children }) {
             <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto"></div>
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-3">
-            Setting Up Your Account
+            {shouldBlockRendering ? 'Setting Up Your Account' : 'Loading...'}
           </h2>
           <p className="text-gray-600 mb-2">
-            Please wait while we complete your installation...
+            {shouldBlockRendering
+              ? 'Please wait while we complete your installation...'
+              : 'Verifying your account...'}
           </p>
           <div className="mt-6 flex items-center justify-center gap-2 text-sm text-gray-500">
             <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
