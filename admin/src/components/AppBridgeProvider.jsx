@@ -90,10 +90,12 @@ export default function ShopifyAppBridgeProvider({ children }) {
         const data = await response.json();
 
         if (!data.installed) {
-          // If we're coming back from OAuth (installing=true) but shop not found yet,
-          // keep polling instead of redirecting again
-          if (installing === 'true') {
-            console.log('⏳ Installation in progress, will retry...');
+          // Check if we have install_id (means OAuth already happened, just waiting for DB sync)
+          const hasInstallId = sessionStorage.getItem('shopify_install_id');
+
+          if (installing === 'true' && hasInstallId) {
+            // OAuth already completed, just poll until shop appears in database
+            console.log('⏳ Installation in progress, waiting for database sync...');
             setIsChecking(false);
             // Poll again after 1.5 seconds
             setTimeout(() => {
@@ -102,6 +104,7 @@ export default function ShopifyAppBridgeProvider({ children }) {
             return;
           }
 
+          // No install_id means OAuth hasn't happened yet - redirect to OAuth
           console.log('⚠️ Shop not installed in database, redirecting to OAuth...');
 
           const authUrl = `${import.meta.env.VITE_API_URL}/auth/install?shop=${shop}`;
