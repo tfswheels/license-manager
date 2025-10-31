@@ -16,21 +16,7 @@ export default function ShopifyAppBridgeProvider({ children }) {
 
   let shop = urlParams.get('shop') || routerParams.get('shop');
   let host = urlParams.get('host') || routerParams.get('host');
-  let installing = urlParams.get('installing') || routerParams.get('installing');
-  const installId = urlParams.get('install_id') || routerParams.get('install_id');
-
-  // Persist installing state in sessionStorage
-  // This is critical because Shopify may not preserve query params when loading the iframe
-  if (installing === 'true' && installId) {
-    sessionStorage.setItem('shopify_installing', 'true');
-    sessionStorage.setItem('shopify_install_id', installId);
-  }
-
-  // Check sessionStorage if not in URL (iframe reload scenario)
-  if (!installing && sessionStorage.getItem('shopify_installing') === 'true') {
-    installing = 'true';
-    console.log('📦 Restored installing state from sessionStorage');
-  }
+  const installing = urlParams.get('installing') || routerParams.get('installing');
 
   // CRITICAL: Block all rendering immediately if installing
   // This must happen BEFORE any other logic
@@ -90,11 +76,8 @@ export default function ShopifyAppBridgeProvider({ children }) {
         const data = await response.json();
 
         if (!data.installed) {
-          // Check if we have install_id (means OAuth already happened, just waiting for DB sync)
-          const hasInstallId = sessionStorage.getItem('shopify_install_id');
-
-          if (installing === 'true' && hasInstallId) {
-            // OAuth already completed, just poll until shop appears in database
+          if (installing === 'true') {
+            // OAuth already happened (we have installing param), just waiting for DB sync
             console.log('⏳ Installation in progress, waiting for database sync...');
             setIsChecking(false);
             // Poll again after 1.5 seconds
@@ -104,7 +87,7 @@ export default function ShopifyAppBridgeProvider({ children }) {
             return;
           }
 
-          // No install_id means OAuth hasn't happened yet - redirect to OAuth
+          // Shop not in DB and no installing param - need to start OAuth
           console.log('⚠️ Shop not installed in database, redirecting to OAuth...');
 
           const authUrl = `${import.meta.env.VITE_API_URL}/auth/install?shop=${shop}`;
@@ -117,10 +100,6 @@ export default function ShopifyAppBridgeProvider({ children }) {
         }
 
         console.log('✅ Shop is installed, proceeding normally');
-
-        // Clear installing state from sessionStorage
-        sessionStorage.removeItem('shopify_installing');
-        sessionStorage.removeItem('shopify_install_id');
 
         // Mark installation as complete - this will allow app to render
         setIsInstallingComplete(true);
