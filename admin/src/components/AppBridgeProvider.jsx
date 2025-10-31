@@ -9,11 +9,14 @@ export default function ShopifyAppBridgeProvider({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const app = useAppBridge();
-  
-  const params = new URLSearchParams(location.search);
-  let shop = params.get('shop');
-  let host = params.get('host');
-  const installing = params.get('installing');
+
+  // Check URL directly first (more reliable on initial render than useLocation)
+  const urlParams = new URLSearchParams(window.location.search);
+  const routerParams = new URLSearchParams(location.search);
+
+  let shop = urlParams.get('shop') || routerParams.get('shop');
+  let host = urlParams.get('host') || routerParams.get('host');
+  const installing = urlParams.get('installing') || routerParams.get('installing');
 
   // If not in URL, try sessionStorage first
   if (!shop) {
