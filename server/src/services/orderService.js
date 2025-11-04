@@ -34,8 +34,26 @@ export async function processOrder(shopDomain, orderData) {
       throw new Error(`Monthly order limit of ${orderLimitCheck.limit} orders has been reached. Please upgrade your plan to process more orders.`);
     }
 
+    // Check if order already exists (prevents duplicate processing from webhook retries)
+    const [existingOrders] = await connection.execute(
+      'SELECT id FROM orders WHERE shop_id = ? AND shopify_order_id = ?',
+      [shopId, orderData.id.toString()]
+    );
+
+    if (existingOrders.length > 0) {
+      await connection.commit();
+      console.log(`⚠️ Order ${orderData.order_number} already processed, skipping duplicate webhook`);
+      return { success: true, orderId: existingOrders[0].id, duplicate: true };
+    }
+
     // Get shop settings for this order
     const settings = await getShopSettings(shopId);
+
+    // Extract customer email from various possible locations in Shopify webhook
+    const customerEmail = orderData.email ||
+                         orderData.contact_email ||
+                         orderData.customer?.email ||
+                         null;
 
     const [orderResult] = await connection.execute(
       `INSERT INTO orders (shop_id, shopify_order_id, order_number, customer_email,
@@ -45,7 +63,7 @@ export async function processOrder(shopDomain, orderData) {
         shopId,
         orderData.id.toString(),
         orderData.order_number || orderData.name,
-        orderData.email ?? null,
+        customerEmail,
         orderData.customer?.first_name || '',
         orderData.customer?.last_name || '',
         orderData.financial_status ?? null
@@ -99,7 +117,7 @@ export async function processOrder(shopDomain, orderData) {
 
         // Send email with template support and settings
         await sendLicenseEmail({
-          email: orderData.email,
+          email: customerEmail,
           firstName: orderData.customer?.first_name || 'Customer',
           lastName: orderData.customer?.last_name || '',
           orderNumber: orderData.order_number || orderData.name,
@@ -116,7 +134,7 @@ export async function processOrder(shopDomain, orderData) {
           `INSERT INTO email_logs (order_id, order_item_id, customer_email,
             licenses_sent, email_status)
            VALUES (?, ?, ?, ?, ?)`,
-          [orderId, orderItemId, orderData.email ?? null, JSON.stringify(licenses.map(l => l.license_key)), 'sent']
+          [orderId, orderItemId, customerEmail, JSON.stringify(licenses.map(l => l.license_key)), 'sent']
         );
 
         await connection.execute(
@@ -142,7 +160,7 @@ export async function processOrder(shopDomain, orderData) {
         if (settings.out_of_stock_behavior === 'send_placeholder') {
           // Send email with placeholder
           await sendLicenseEmail({
-            email: orderData.email,
+            email: customerEmail,
             firstName: orderData.customer?.first_name || 'Customer',
             lastName: orderData.customer?.last_name || '',
             orderNumber: orderData.order_number || orderData.name,
@@ -160,7 +178,7 @@ export async function processOrder(shopDomain, orderData) {
             `INSERT INTO email_logs (order_id, order_item_id, customer_email,
               licenses_sent, email_status)
              VALUES (?, ?, ?, ?, ?)`,
-            [orderId, orderItemId, orderData.email ?? null, JSON.stringify([]), 'sent_placeholder']
+            [orderId, orderItemId, customerEmail, JSON.stringify([]), 'sent_placeholder']
           );
 
           await connection.execute(

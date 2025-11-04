@@ -72,6 +72,7 @@ router.post('/create', verifyWebhook, async (req, res) => {
     const shop = req.get('X-Shopify-Shop-Domain');
 
     console.log(`📦 New order received from ${shop}: Order #${orderData.order_number}`);
+    console.log(`📧 Email fields: email="${orderData.email}", contact_email="${orderData.contact_email}", customer.email="${orderData.customer?.email}"`);
 
     // Process order asynchronously
     processOrder(shop, orderData)
