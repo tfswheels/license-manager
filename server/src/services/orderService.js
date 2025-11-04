@@ -50,10 +50,23 @@ export async function processOrder(shopDomain, orderData) {
     const settings = await getShopSettings(shopId);
 
     // Extract customer email from various possible locations in Shopify webhook
+    // NOTE: Email will be null until Shopify approves email access for webhooks
+    // Once approved, the email should appear in orderData.email or orderData.contact_email
     const customerEmail = orderData.email ||
                          orderData.contact_email ||
                          orderData.customer?.email ||
                          null;
+
+    // Extract customer name with fallbacks to billing/shipping address
+    const customerFirstName = orderData.customer?.first_name ||
+                             orderData.billing_address?.first_name ||
+                             orderData.shipping_address?.first_name ||
+                             null;
+
+    const customerLastName = orderData.customer?.last_name ||
+                            orderData.billing_address?.last_name ||
+                            orderData.shipping_address?.last_name ||
+                            null;
 
     const [orderResult] = await connection.execute(
       `INSERT INTO orders (shop_id, shopify_order_id, order_number, customer_email,
@@ -64,8 +77,8 @@ export async function processOrder(shopDomain, orderData) {
         orderData.id.toString(),
         orderData.order_number || orderData.name,
         customerEmail,
-        orderData.customer?.first_name || '',
-        orderData.customer?.last_name || '',
+        customerFirstName,
+        customerLastName,
         orderData.financial_status ?? null
       ]
     );
@@ -118,8 +131,8 @@ export async function processOrder(shopDomain, orderData) {
         // Send email with template support and settings
         await sendLicenseEmail({
           email: customerEmail,
-          firstName: orderData.customer?.first_name || 'Customer',
-          lastName: orderData.customer?.last_name || '',
+          firstName: customerFirstName || 'Customer',
+          lastName: customerLastName || '',
           orderNumber: orderData.order_number || orderData.name,
           productName: lineItem.title,
           productId: dbProductId,
@@ -161,8 +174,8 @@ export async function processOrder(shopDomain, orderData) {
           // Send email with placeholder
           await sendLicenseEmail({
             email: customerEmail,
-            firstName: orderData.customer?.first_name || 'Customer',
-            lastName: orderData.customer?.last_name || '',
+            firstName: customerFirstName || 'Customer',
+            lastName: customerLastName || '',
             orderNumber: orderData.order_number || orderData.name,
             productName: lineItem.title,
             productId: dbProductId,
