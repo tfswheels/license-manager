@@ -57,6 +57,12 @@ export async function sendLicenseEmail({
   shopName = null
 }) {
   try {
+    // Check if email is valid
+    if (!email) {
+      console.warn(`⚠️ No email address provided for order ${orderNumber}. Skipping email.`);
+      return { success: false, reason: 'no_email' };
+    }
+
     // Get template for this product
     const template = await getTemplateForProduct(productId);
 

@@ -38,17 +38,17 @@ export async function processOrder(shopDomain, orderData) {
     const settings = await getShopSettings(shopId);
 
     const [orderResult] = await connection.execute(
-      `INSERT INTO orders (shop_id, shopify_order_id, order_number, customer_email, 
+      `INSERT INTO orders (shop_id, shopify_order_id, order_number, customer_email,
         customer_first_name, customer_last_name, order_status)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         shopId,
         orderData.id.toString(),
         orderData.order_number || orderData.name,
-        orderData.email,
+        orderData.email ?? null,
         orderData.customer?.first_name || '',
         orderData.customer?.last_name || '',
-        orderData.financial_status
+        orderData.financial_status ?? null
       ]
     );
 
@@ -116,7 +116,7 @@ export async function processOrder(shopDomain, orderData) {
           `INSERT INTO email_logs (order_id, order_item_id, customer_email,
             licenses_sent, email_status)
            VALUES (?, ?, ?, ?, ?)`,
-          [orderId, orderItemId, orderData.email, JSON.stringify(licenses.map(l => l.license_key)), 'sent']
+          [orderId, orderItemId, orderData.email ?? null, JSON.stringify(licenses.map(l => l.license_key)), 'sent']
         );
 
         await connection.execute(
@@ -160,7 +160,7 @@ export async function processOrder(shopDomain, orderData) {
             `INSERT INTO email_logs (order_id, order_item_id, customer_email,
               licenses_sent, email_status)
              VALUES (?, ?, ?, ?, ?)`,
-            [orderId, orderItemId, orderData.email, JSON.stringify([]), 'sent_placeholder']
+            [orderId, orderItemId, orderData.email ?? null, JSON.stringify([]), 'sent_placeholder']
           );
 
           await connection.execute(
