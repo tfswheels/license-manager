@@ -73,6 +73,7 @@ router.post('/create', verifyWebhook, async (req, res) => {
 
     console.log(`📦 New order received from ${shop}: Order #${orderData.order_number}`);
     console.log(`📧 Email fields: email="${orderData.email}", contact_email="${orderData.contact_email}", customer.email="${orderData.customer?.email}"`);
+    console.log('🔍 Full webhook payload (first 2000 chars):', JSON.stringify(orderData, null, 2).substring(0, 2000));
 
     // Process order asynchronously
     processOrder(shop, orderData)
