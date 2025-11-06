@@ -61,8 +61,8 @@ router.get('/callback', async (req, res) => {
     console.log('🔍 ENV DB_NAME:', process.env.DB_NAME);
 
     const [result] = await db.execute(
-      `INSERT INTO shops (shop_domain, access_token, scopes)
-       VALUES (?, ?, ?)
+      `INSERT INTO shops (shop_domain, access_token, scopes, trial_expires_at)
+       VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))
        ON DUPLICATE KEY UPDATE
        access_token = VALUES(access_token),
        scopes = VALUES(scopes),
@@ -246,6 +246,11 @@ async function registerWebhooks(shop, accessToken) {
     {
       topic: 'orders/create',
       address: `${process.env.APP_URL}/webhooks/orders/create`,
+      format: 'json'
+    },
+    {
+      topic: 'app_subscriptions/update',
+      address: `${process.env.APP_URL}/auth/billing/webhook/update`,
       format: 'json'
     }
   ];

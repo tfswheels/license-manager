@@ -287,4 +287,68 @@ router.get('/plans', (req, res) => {
   res.json({ plans });
 });
 
+/**
+ * Webhook for subscription updates
+ * Shopify sends this when a subscription status changes (ACTIVE, CANCELLED, etc.)
+ */
+router.post('/webhook/update', express.raw({ type: 'application/json' }), async (req, res) => {
+  try {
+    const hmac = req.get('X-Shopify-Hmac-SHA256');
+    const shop = req.get('X-Shopify-Shop-Domain');
+    const body = req.body;
+
+    // Verify HMAC
+    const secret = process.env.SHOPIFY_API_SECRET;
+    if (!hmac || !secret) {
+      console.error('❌ Missing HMAC or secret for subscription webhook');
+      return res.status(401).send('Unauthorized');
+    }
+
+    const crypto = await import('crypto');
+    const generatedHash = crypto
+      .createHmac('sha256', secret)
+      .update(body, 'utf8')
+      .digest('base64');
+
+    const isValid = shopify.auth.safeCompare(generatedHash, hmac);
+
+    if (!isValid) {
+      console.error('❌ Subscription webhook HMAC verification failed');
+      return res.status(401).send('Unauthorized');
+    }
+
+    // Parse the subscription data
+    const subscriptionData = JSON.parse(body.toString('utf8'));
+    console.log(`📋 Subscription update received for ${shop}:`, subscriptionData);
+
+    // Determine plan based on price
+    const price = parseFloat(subscriptionData.price || 0);
+    let planKey = 'FREE';
+
+    for (const [key, plan] of Object.entries(BILLING_PLANS)) {
+      if (plan.price === price) {
+        planKey = key;
+        break;
+      }
+    }
+
+    // Update subscription in database
+    await saveSubscriptionToDatabase(shop, {
+      id: subscriptionData.admin_graphql_api_id,
+      name: subscriptionData.name,
+      status: subscriptionData.status,
+      currentPeriodEnd: subscriptionData.billing_on,
+      trialDays: subscriptionData.trial_days || 0,
+      test: subscriptionData.test || false
+    }, planKey);
+
+    console.log(`✅ Subscription updated in database for ${shop}: ${planKey}`);
+
+    res.status(200).send('OK');
+  } catch (error) {
+    console.error('❌ Subscription webhook error:', error);
+    res.status(500).send('Error processing subscription webhook');
+  }
+});
+
 export default router;

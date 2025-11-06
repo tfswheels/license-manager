@@ -11,14 +11,18 @@ export const BILLING_PLANS = {
     name: 'Free Trial',
     price: 0,
     interval: null,
+    trialDays: 7,
     test: false,
     features: {
-      maxOrdersPerMonth: 10,
-      maxProducts: 2,
-      maxLicensesPerProduct: 100,
+      maxOrdersPerMonth: -1, // Unlimited during trial
+      maxProducts: -1, // Unlimited during trial
+      maxLicensesPerProduct: -1, // Unlimited during trial
       emailSupport: false,
-      customTemplates: false,
-      advancedRules: false
+      customTemplates: true, // Allow during trial
+      advancedRules: true, // Allow during trial
+      privateBranding: true, // Allow during trial
+      bulkUpload: true, // Allow during trial
+      realTimeSync: true // Allow during trial
     }
   },
   STARTER: {
@@ -412,14 +416,57 @@ export async function getMonthlyOrderCount(shopId) {
 }
 
 /**
- * Check if shop can process more orders based on their plan limit
+ * Check if shop's trial has expired
+ */
+export async function isTrialExpired(shopId) {
+  try {
+    const [shops] = await db.execute(
+      'SELECT trial_expires_at FROM shops WHERE id = ?',
+      [shopId]
+    );
+
+    if (shops.length === 0) {
+      return false;
+    }
+
+    const trialExpiresAt = shops[0].trial_expires_at;
+
+    // If no trial expiration set, trial is not expired
+    if (!trialExpiresAt) {
+      return false;
+    }
+
+    // Check if trial has expired
+    return new Date() > new Date(trialExpiresAt);
+  } catch (error) {
+    console.error('Error checking trial expiration:', error);
+    return false; // Fail open
+  }
+}
+
+/**
+ * Check if shop can process more orders based on their plan limit and trial status
  */
 export async function canProcessOrder(shopId, shopDomain) {
   try {
-    const [limits, orderCount] = await Promise.all([
+    const subscription = await getShopSubscription(shopDomain);
+    const [limits, orderCount, trialExpired] = await Promise.all([
       getPlanLimits(shopDomain),
-      getMonthlyOrderCount(shopId)
+      getMonthlyOrderCount(shopId),
+      isTrialExpired(shopId)
     ]);
+
+    // If on FREE plan and trial has expired, block orders
+    if ((!subscription || !subscription.subscription_id) && trialExpired) {
+      return {
+        allowed: false,
+        current: orderCount,
+        limit: 0,
+        remaining: 0,
+        reason: 'trial_expired',
+        message: 'Your 7-day free trial has expired. Please upgrade to a paid plan to continue processing orders.'
+      };
+    }
 
     const maxOrders = limits.maxOrdersPerMonth;
 
