@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Mail, Send, CheckCircle, AlertCircle, HelpCircle, FileText, Book, Video, Code } from 'lucide-react';
+import { Mail, Send, CheckCircle, AlertCircle, HelpCircle, FileText, Book, Code } from 'lucide-react';
 import { adminAPI } from '../utils/api';
 import { getCurrentShopId } from '../utils/shopUtils';
 
@@ -98,13 +98,7 @@ function Support() {
       icon: Code,
       title: 'Template Rules',
       description: 'Automatically assign templates based on product tags, vendors, and more',
-      link: '/documentation#rules'
-    },
-    {
-      icon: Video,
-      title: 'Video Tutorials',
-      description: 'Watch step-by-step guides on common tasks',
-      link: '/documentation#videos'
+      link: '/documentation#template-rules'
     }
   ];
 
