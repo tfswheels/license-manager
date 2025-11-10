@@ -8,7 +8,7 @@ function ProductLicenses() {
   const { productId } = useParams();
   const navigate = useNavigate();
   const [product, setProduct] = useState(null);
-  const [licenses, setLicenses] = useState([]);
+  const [allLicenses, setAllLicenses] = useState([]); // Store all licenses (unfiltered)
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
   const [parsedLicenses, setParsedLicenses] = useState([]);
@@ -24,22 +24,19 @@ function ProductLicenses() {
 
   useEffect(() => {
     loadData();
-  }, [productId, filter]);
+  }, [productId]);
 
   const loadData = async () => {
     try {
       setLoading(true);
       const [productsRes, licensesRes] = await Promise.all([
         adminAPI.getProducts(),
-        adminAPI.getLicenses(
-          productId,
-          filter === 'all' ? null : filter === 'allocated'
-        ),
+        adminAPI.getLicenses(productId, null), // Always fetch all licenses
       ]);
-      
+
       const prod = productsRes.data.find(p => p.id === parseInt(productId));
       setProduct(prod);
-      setLicenses(licensesRes.data);
+      setAllLicenses(licensesRes.data); // Store all unfiltered licenses
     } catch (error) {
       console.error('Failed to load licenses:', error);
     } finally {
@@ -260,11 +257,24 @@ function ProductLicenses() {
     setCurrentPage(1);
   }, [filter]);
 
-  // Calculate pagination
-  const totalPages = Math.ceil(licenses.length / pageSize);
+  // Filter licenses based on selected filter
+  const filteredLicenses = allLicenses.filter(license => {
+    if (filter === 'all') return true;
+    if (filter === 'available') return !license.allocated;
+    if (filter === 'allocated') return license.allocated;
+    return true;
+  });
+
+  // Calculate counts from full unfiltered array
+  const totalCount = allLicenses.length;
+  const availableCount = allLicenses.filter(l => !l.allocated).length;
+  const allocatedCount = allLicenses.filter(l => l.allocated).length;
+
+  // Calculate pagination from filtered licenses
+  const totalPages = Math.ceil(filteredLicenses.length / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
-  const paginatedLicenses = licenses.slice(startIndex, endIndex);
+  const paginatedLicenses = filteredLicenses.slice(startIndex, endIndex);
 
   const handlePageSizeChange = (newSize) => {
     setPageSize(newSize);
@@ -283,7 +293,7 @@ function ProductLicenses() {
       return;
     }
 
-    const allocatedCount = licenses.filter(l => selectedLicenses.has(l.id) && l.allocated).length;
+    const allocatedCount = allLicenses.filter(l => selectedLicenses.has(l.id) && l.allocated).length;
     if (allocatedCount > 0) {
       alert(`Cannot delete ${allocatedCount} allocated license(s). Only unallocated licenses can be deleted.`);
       return;
@@ -311,7 +321,7 @@ function ProductLicenses() {
       return;
     }
 
-    const allocatedCount = licenses.filter(l => selectedLicenses.has(l.id) && l.allocated).length;
+    const allocatedCount = allLicenses.filter(l => selectedLicenses.has(l.id) && l.allocated).length;
     if (allocatedCount === 0) {
       alert('No allocated licenses selected to release');
       return;
@@ -567,7 +577,7 @@ function ProductLicenses() {
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              All ({licenses.length})
+              All ({totalCount})
             </button>
             <button
               onClick={() => setFilter('available')}
@@ -577,7 +587,7 @@ function ProductLicenses() {
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              Available ({licenses.filter(l => !l.allocated).length})
+              Available ({availableCount})
             </button>
             <button
               onClick={() => setFilter('allocated')}
@@ -587,7 +597,7 @@ function ProductLicenses() {
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              Allocated ({licenses.filter(l => l.allocated).length})
+              Allocated ({allocatedCount})
             </button>
           </div>
         </div>
@@ -625,31 +635,35 @@ function ProductLicenses() {
           </div>
         )}
 
-        {licenses.length === 0 ? (
+        {filteredLicenses.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-500">No licenses found</p>
+            <p className="text-gray-500">
+              {allLicenses.length === 0 ? 'No licenses found' : `No ${filter} licenses found`}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700 w-12">
-                    <button
-                      onClick={toggleSelectAll}
-                      className="p-1 hover:bg-gray-200 rounded transition-colors"
-                      title={
-                        paginatedLicenses.every(l => selectedLicenses.has(l.id))
-                          ? 'Deselect All on Page'
-                          : 'Select All on Page'
-                      }
-                    >
-                      {paginatedLicenses.every(l => selectedLicenses.has(l.id)) && paginatedLicenses.length > 0 ? (
-                        <CheckSquare className="w-5 h-5 text-blue-600" />
-                      ) : (
-                        <Square className="w-5 h-5 text-gray-400" />
-                      )}
-                    </button>
+                  <th className="py-3 px-4 font-medium text-gray-700" style={{ width: '60px' }}>
+                    <div className="flex items-center justify-center">
+                      <button
+                        onClick={toggleSelectAll}
+                        className="p-1 hover:bg-gray-200 rounded transition-colors"
+                        title={
+                          paginatedLicenses.every(l => selectedLicenses.has(l.id))
+                            ? 'Deselect All on Page'
+                            : 'Select All on Page'
+                        }
+                      >
+                        {paginatedLicenses.every(l => selectedLicenses.has(l.id)) && paginatedLicenses.length > 0 ? (
+                          <CheckSquare className="w-5 h-5 text-blue-600" />
+                        ) : (
+                          <Square className="w-5 h-5 text-gray-400" />
+                        )}
+                      </button>
+                    </div>
                   </th>
                   <th className="text-left py-3 px-4 font-medium text-gray-700">License Key</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-700">Status</th>
@@ -661,16 +675,18 @@ function ProductLicenses() {
                 {paginatedLicenses.map((license) => (
                   <tr key={license.id} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="py-3 px-4">
-                      <button
-                        onClick={() => toggleLicenseSelection(license.id)}
-                        className="p-1 hover:bg-gray-200 rounded transition-colors"
-                      >
-                        {selectedLicenses.has(license.id) ? (
-                          <CheckSquare className="w-5 h-5 text-blue-600" />
-                        ) : (
-                          <Square className="w-5 h-5 text-gray-400" />
-                        )}
-                      </button>
+                      <div className="flex items-center justify-center">
+                        <button
+                          onClick={() => toggleLicenseSelection(license.id)}
+                          className="p-1 hover:bg-gray-200 rounded transition-colors"
+                        >
+                          {selectedLicenses.has(license.id) ? (
+                            <CheckSquare className="w-5 h-5 text-blue-600" />
+                          ) : (
+                            <Square className="w-5 h-5 text-gray-400" />
+                          )}
+                        </button>
+                      </div>
                     </td>
                     <td className="py-3 px-4 font-mono text-sm text-gray-900">
                       {license.license_key}
@@ -716,11 +732,11 @@ function ProductLicenses() {
             </table>
 
             {/* Pagination Controls */}
-            {licenses.length > 0 && (
+            {filteredLicenses.length > 0 && (
               <div className="mt-4 flex items-center justify-between border-t border-gray-200 pt-4">
                 <div className="flex items-center gap-3">
                   <span className="text-sm text-gray-600">
-                    Showing {startIndex + 1}-{Math.min(endIndex, licenses.length)} of {licenses.length}
+                    Showing {startIndex + 1}-{Math.min(endIndex, filteredLicenses.length)} of {filteredLicenses.length}
                   </span>
                   <div className="flex items-center gap-2">
                     <label className="text-sm text-gray-600">Per page:</label>
