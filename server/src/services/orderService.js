@@ -4,6 +4,51 @@ import { sendLicenseEmail, sendNotificationEmail } from './emailService.js';
 import { checkInventoryAlerts } from './inventoryService.js';
 import { getShopSettings } from './settingsService.js';
 import { canProcessOrder } from './billingService.js';
+import { shopify } from '../config/shopify.js';
+
+/**
+ * Mark a Shopify order as fulfilled after successful license delivery
+ */
+async function fulfillShopifyOrder(shopDomain, accessToken, shopifyOrderId, lineItemId) {
+  try {
+    // Don't try to fulfill manual orders
+    if (!shopifyOrderId || shopifyOrderId.startsWith('MANUAL-')) {
+      console.log('Skipping fulfillment for manual order:', shopifyOrderId);
+      return { success: false, reason: 'manual_order' };
+    }
+
+    const client = new shopify.clients.Rest({
+      session: { shop: shopDomain, accessToken }
+    });
+
+    // Create fulfillment for this order
+    const fulfillmentData = {
+      fulfillment: {
+        location_id: null, // Not needed for digital products
+        tracking_number: null,
+        notify_customer: false, // We already sent our own email
+        line_items: [
+          {
+            id: lineItemId
+          }
+        ]
+      }
+    };
+
+    await client.post({
+      path: `orders/${shopifyOrderId}/fulfillments`,
+      data: fulfillmentData
+    });
+
+    console.log(`✅ Fulfilled Shopify order ${shopifyOrderId}`);
+    return { success: true };
+
+  } catch (error) {
+    // Don't fail the entire order process if fulfillment fails
+    console.error(`⚠️ Failed to fulfill Shopify order ${shopifyOrderId}:`, error.message);
+    return { success: false, error: error.message };
+  }
+}
 
 export async function processOrder(shopDomain, orderData) {
   const connection = await db.getConnection();
@@ -155,6 +200,9 @@ export async function processOrder(shopDomain, orderData) {
           [orderItemId]
         );
 
+        // Mark Shopify order as fulfilled after successful email delivery
+        await fulfillShopifyOrder(shopDomain, accessToken, orderData.id?.toString(), lineItem.id?.toString());
+
         await checkInventoryAlerts(connection, dbProductId, shopId);
 
         // Send notification if uniqueness caused partial allocation
@@ -198,6 +246,9 @@ export async function processOrder(shopDomain, orderData) {
             `UPDATE order_items SET email_sent = TRUE, email_sent_at = NOW() WHERE id = ?`,
             [orderItemId]
           );
+
+          // Mark Shopify order as fulfilled even with placeholder email
+          await fulfillShopifyOrder(shopDomain, accessToken, orderData.id?.toString(), lineItem.id?.toString());
         }
         // else: no_email - don't send anything
 
@@ -337,7 +388,7 @@ export async function manualAllocate(orderId) {
 
     const [orderItems] = await connection.execute(
       `SELECT oi.*, o.customer_email, o.customer_first_name, o.customer_last_name,
-              o.order_number, p.product_name, p.id as product_id, p.shop_id
+              o.order_number, o.shopify_order_id, p.product_name, p.id as product_id, p.shop_id
        FROM order_items oi
        JOIN orders o ON oi.order_id = o.id
        JOIN products p ON oi.product_id = p.id
@@ -410,6 +461,11 @@ export async function manualAllocate(orderId) {
           `UPDATE order_items SET email_sent = TRUE, email_sent_at = NOW() WHERE id = ?`,
           [item.id]
         );
+
+        // Mark Shopify order as fulfilled after manual allocation email delivery
+        if (item.shopify_order_id && item.shopify_line_item_id) {
+          await fulfillShopifyOrder(shopDomain, accessToken, item.shopify_order_id, item.shopify_line_item_id);
+        }
 
         // Check for low inventory alerts
         await checkInventoryAlerts(connection, item.product_id, shopId);
