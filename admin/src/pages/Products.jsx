@@ -365,13 +365,16 @@ function Products() {
                   const defaultTemplate = templates.find(t => t.is_default);
 
                   return (
-                    <tr 
-                      key={product.id} 
+                    <tr
+                      key={product.id}
                       className={`border-b border-gray-100 hover:bg-gray-50 ${isSelected ? 'bg-primary-50' : ''}`}
                     >
                       <td className="py-4 px-4">
                         <button
-                          onClick={() => toggleProduct(product.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleProduct(product.id);
+                          }}
                           className="hover:bg-gray-100 rounded p-1"
                         >
                           {isSelected ? (
@@ -381,8 +384,11 @@ function Products() {
                           )}
                         </button>
                       </td>
-                      <td className="py-4 px-4">
-                        <div className="font-medium text-gray-900">{product.product_name}</div>
+                      <td
+                        className="py-4 px-4 cursor-pointer"
+                        onClick={() => navigate(`/products/${product.id}/licenses`)}
+                      >
+                        <div className="font-medium text-gray-900 hover:text-blue-600 transition-colors">{product.product_name}</div>
                         <div className="text-sm text-gray-500">ID: {product.shopify_product_id}</div>
                       </td>
                       <td className="py-4 px-4 text-right">
@@ -472,12 +478,18 @@ function Products() {
               return (
                 <div key={product.id} className={`product-card ${isSelected ? 'bg-primary-50' : ''}`}>
                   <div className="card-header">
-                    <div className="flex-1">
-                      <div className="card-title">{product.product_name}</div>
+                    <div
+                      className="flex-1 cursor-pointer"
+                      onClick={() => navigate(`/products/${product.id}/licenses`)}
+                    >
+                      <div className="card-title hover:text-blue-600 transition-colors">{product.product_name}</div>
                       <div className="card-subtitle">ID: {product.shopify_product_id}</div>
                     </div>
                     <button
-                      onClick={() => toggleProduct(product.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleProduct(product.id);
+                      }}
                       className="card-checkbox"
                     >
                       {isSelected ? (
