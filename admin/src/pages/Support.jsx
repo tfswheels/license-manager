@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Mail, Send, CheckCircle, AlertCircle, HelpCircle } from 'lucide-react';
+import { Mail, Send, CheckCircle, AlertCircle, HelpCircle, FileText, Book, Video, Code } from 'lucide-react';
 import { adminAPI } from '../utils/api';
 import { getCurrentShopId } from '../utils/shopUtils';
 
@@ -81,15 +81,83 @@ function Support() {
     { value: 'other', label: 'Other' }
   ];
 
+  const documentationResources = [
+    {
+      icon: Book,
+      title: 'Getting Started Guide',
+      description: 'Learn how to set up your first product and email template',
+      link: '/documentation#getting-started'
+    },
+    {
+      icon: FileText,
+      title: 'Email Templates',
+      description: 'Create custom templates and use template variables',
+      link: '/documentation#templates'
+    },
+    {
+      icon: Code,
+      title: 'Template Rules',
+      description: 'Automatically assign templates based on product tags, vendors, and more',
+      link: '/documentation#rules'
+    },
+    {
+      icon: Video,
+      title: 'Video Tutorials',
+      description: 'Watch step-by-step guides on common tasks',
+      link: '/documentation#videos'
+    }
+  ];
+
   return (
     <div className="space-y-6 max-w-3xl">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
           <HelpCircle className="w-8 h-8 text-blue-600" />
-          Support
+          Support & Documentation
         </h1>
-        <p className="text-gray-500 mt-1">Get help or report an issue with DigiKey HQ</p>
+        <p className="text-gray-500 mt-1">Get help, view guides, or report an issue with DigiKey HQ</p>
+      </div>
+
+      {/* Documentation Resources */}
+      <div>
+        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <Book className="w-5 h-5 text-blue-600" />
+          Documentation & Resources
+        </h2>
+        <div className="grid md:grid-cols-2 gap-4">
+          {documentationResources.map((resource, index) => {
+            const Icon = resource.icon;
+            return (
+              <a
+                key={index}
+                href={resource.link}
+                className="card hover:shadow-lg transition-shadow cursor-pointer border-2 border-transparent hover:border-blue-500"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Icon className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-1">{resource.title}</h3>
+                    <p className="text-sm text-gray-600">{resource.description}</p>
+                  </div>
+                </div>
+              </a>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Divider */}
+      <div className="border-t border-gray-200 pt-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <Mail className="w-5 h-5 text-blue-600" />
+          Contact Support
+        </h2>
+        <p className="text-gray-600 mb-6">
+          Can't find what you're looking for? Send us a message and we'll help you out.
+        </p>
       </div>
 
       {/* Success Message */}
