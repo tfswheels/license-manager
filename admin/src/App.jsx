@@ -1,6 +1,6 @@
 // admin/src/App.jsx
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import AppBridgeProvider from './components/AppBridgeProvider';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
@@ -17,14 +17,23 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import GDPRCompliance from './pages/GDPRCompliance';
 import Documentation from './pages/Documentation';
+import LandingPage from './pages/LandingPage';
 import './styles/embedded.css';
 import './styles/responsive.css';
 
 function App() {
-  // Detect if we're in embedded mode and apply compact styles
+  const [hasShop, setHasShop] = useState(null);
+
+  // Check if we have a shop parameter
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const shop = params.get('shop') || sessionStorage.getItem('shopify_shop');
+    const shop = params.get('shop') ||
+                 sessionStorage.getItem('shopify_shop') ||
+                 localStorage.getItem('shopify_shop');
+
+    setHasShop(!!shop);
+
+    // Detect if we're in embedded mode and apply compact styles
     const isEmbedded = shop || window.self !== window.top; // Has shop param or in iframe
 
     if (isEmbedded) {
@@ -34,6 +43,30 @@ function App() {
     }
   }, []);
 
+  // Show nothing while checking for shop
+  if (hasShop === null) {
+    return null;
+  }
+
+  // Show landing page if no shop parameter
+  if (hasShop === false) {
+    return (
+      <Router>
+        <Routes>
+          {/* Public Legal Pages */}
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms-of-service" element={<TermsOfService />} />
+          <Route path="/gdpr-compliance" element={<GDPRCompliance />} />
+          <Route path="/documentation" element={<Documentation />} />
+
+          {/* Landing page for all other routes */}
+          <Route path="/*" element={<LandingPage />} />
+        </Routes>
+      </Router>
+    );
+  }
+
+  // Show admin app if we have shop parameter
   return (
     <Router>
       <Routes>

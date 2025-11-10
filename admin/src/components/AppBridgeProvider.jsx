@@ -2,7 +2,6 @@
 import React, { useEffect } from 'react';
 import { useAppBridge } from '@shopify/app-bridge-react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import LandingPage from '../pages/LandingPage';
 import { setAppBridgeInstance } from '../utils/api';
 
 export default function ShopifyAppBridgeProvider({ children }) {
@@ -149,11 +148,6 @@ export default function ShopifyAppBridgeProvider({ children }) {
       console.log('✅ App Bridge instance initialized for API client');
     }
   }, [app]);
-
-  // If we don't have shop param, show marketing landing page
-  if (!shop) {
-    return <LandingPage />;
-  }
 
   // CRITICAL: Block all rendering until we've verified shop status
   // Show loading screen if:
