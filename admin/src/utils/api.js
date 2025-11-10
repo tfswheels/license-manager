@@ -109,6 +109,8 @@ export const adminAPI = {
   parseCSV: (csvContent) => api.post('/api/admin/licenses/parse-csv', { csvContent }),
   deleteLicense: (licenseId) => api.delete(`/api/admin/licenses/${licenseId}`),
   releaseLicense: (licenseId) => api.post(`/api/admin/licenses/${licenseId}/release`),
+  bulkDeleteLicenses: (licenseIds) => api.post('/api/admin/licenses/bulk-delete', { licenseIds }),
+  bulkReleaseLicenses: (licenseIds) => api.post('/api/admin/licenses/bulk-release', { licenseIds }),
 
   // Templates
   getTemplates: (shopId) => api.get('/api/admin/templates', { params: { shopId } }),

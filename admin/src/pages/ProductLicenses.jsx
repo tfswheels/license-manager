@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, Trash2, RotateCcw, FileText, FileSpreadsheet, Edit3 } from 'lucide-react';
+import { ArrowLeft, Upload, Trash2, RotateCcw, FileText, FileSpreadsheet, Edit3, CheckSquare, Square } from 'lucide-react';
 import { adminAPI } from '../utils/api';
 import * as XLSX from 'xlsx';
 
@@ -17,6 +17,8 @@ function ProductLicenses() {
   const [fileName, setFileName] = useState('');
   const [entryMode, setEntryMode] = useState('file'); // 'file' or 'manual'
   const [manualInput, setManualInput] = useState('');
+  const [selectedLicenses, setSelectedLicenses] = useState(new Set());
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -223,6 +225,80 @@ function ProductLicenses() {
     } catch (error) {
       console.error('Release failed:', error);
       alert('Failed to release license');
+    }
+  };
+
+  const toggleLicenseSelection = (licenseId) => {
+    const newSelection = new Set(selectedLicenses);
+    if (newSelection.has(licenseId)) {
+      newSelection.delete(licenseId);
+    } else {
+      newSelection.add(licenseId);
+    }
+    setSelectedLicenses(newSelection);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedLicenses.size === licenses.length) {
+      setSelectedLicenses(new Set());
+    } else {
+      setSelectedLicenses(new Set(licenses.map(l => l.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedLicenses.size === 0) {
+      alert('Please select licenses to delete');
+      return;
+    }
+
+    const allocatedCount = licenses.filter(l => selectedLicenses.has(l.id) && l.allocated).length;
+    if (allocatedCount > 0) {
+      alert(`Cannot delete ${allocatedCount} allocated license(s). Only unallocated licenses can be deleted.`);
+      return;
+    }
+
+    if (!confirm(`Delete ${selectedLicenses.size} selected license(s)?`)) return;
+
+    try {
+      setBulkActionLoading(true);
+      await adminAPI.bulkDeleteLicenses(Array.from(selectedLicenses));
+      setSelectedLicenses(new Set());
+      await loadData();
+      alert(`Successfully deleted ${selectedLicenses.size} license(s)`);
+    } catch (error) {
+      console.error('Bulk delete failed:', error);
+      alert(error.response?.data?.error || 'Failed to delete licenses');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const handleBulkRelease = async () => {
+    if (selectedLicenses.size === 0) {
+      alert('Please select licenses to release');
+      return;
+    }
+
+    const allocatedCount = licenses.filter(l => selectedLicenses.has(l.id) && l.allocated).length;
+    if (allocatedCount === 0) {
+      alert('No allocated licenses selected to release');
+      return;
+    }
+
+    if (!confirm(`Release ${allocatedCount} allocated license(s)?`)) return;
+
+    try {
+      setBulkActionLoading(true);
+      await adminAPI.bulkReleaseLicenses(Array.from(selectedLicenses));
+      setSelectedLicenses(new Set());
+      await loadData();
+      alert(`Successfully released ${allocatedCount} license(s)`);
+    } catch (error) {
+      console.error('Bulk release failed:', error);
+      alert(error.response?.data?.error || 'Failed to release licenses');
+    } finally {
+      setBulkActionLoading(false);
     }
   };
 
@@ -455,8 +531,8 @@ function ProductLicenses() {
             <button
               onClick={() => setFilter('all')}
               className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                filter === 'all' 
-                  ? 'bg-primary-100 text-primary-700' 
+                filter === 'all'
+                  ? 'bg-primary-100 text-primary-700'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
@@ -465,8 +541,8 @@ function ProductLicenses() {
             <button
               onClick={() => setFilter('available')}
               className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                filter === 'available' 
-                  ? 'bg-green-100 text-green-700' 
+                filter === 'available'
+                  ? 'bg-green-100 text-green-700'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
@@ -475,8 +551,8 @@ function ProductLicenses() {
             <button
               onClick={() => setFilter('allocated')}
               className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                filter === 'allocated' 
-                  ? 'bg-blue-100 text-blue-700' 
+                filter === 'allocated'
+                  ? 'bg-blue-100 text-blue-700'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
@@ -484,6 +560,39 @@ function ProductLicenses() {
             </button>
           </div>
         </div>
+
+        {/* Bulk Actions */}
+        {selectedLicenses.size > 0 && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
+            <span className="text-sm font-medium text-blue-900">
+              {selectedLicenses.size} license(s) selected
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={handleBulkRelease}
+                disabled={bulkActionLoading}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Release Selected
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                disabled={bulkActionLoading}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete Selected
+              </button>
+              <button
+                onClick={() => setSelectedLicenses(new Set())}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Clear Selection
+              </button>
+            </div>
+          </div>
+        )}
 
         {licenses.length === 0 ? (
           <div className="text-center py-12">
@@ -494,6 +603,19 @@ function ProductLicenses() {
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
+                  <th className="text-left py-3 px-4 font-medium text-gray-700 w-12">
+                    <button
+                      onClick={toggleSelectAll}
+                      className="p-1 hover:bg-gray-200 rounded transition-colors"
+                      title={selectedLicenses.size === licenses.length ? 'Deselect All' : 'Select All'}
+                    >
+                      {selectedLicenses.size === licenses.length ? (
+                        <CheckSquare className="w-5 h-5 text-blue-600" />
+                      ) : (
+                        <Square className="w-5 h-5 text-gray-400" />
+                      )}
+                    </button>
+                  </th>
                   <th className="text-left py-3 px-4 font-medium text-gray-700">License Key</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-700">Status</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-700">Order</th>
@@ -503,6 +625,18 @@ function ProductLicenses() {
               <tbody>
                 {licenses.map((license) => (
                   <tr key={license.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-3 px-4">
+                      <button
+                        onClick={() => toggleLicenseSelection(license.id)}
+                        className="p-1 hover:bg-gray-200 rounded transition-colors"
+                      >
+                        {selectedLicenses.has(license.id) ? (
+                          <CheckSquare className="w-5 h-5 text-blue-600" />
+                        ) : (
+                          <Square className="w-5 h-5 text-gray-400" />
+                        )}
+                      </button>
+                    </td>
                     <td className="py-3 px-4 font-mono text-sm text-gray-900">
                       {license.license_key}
                     </td>

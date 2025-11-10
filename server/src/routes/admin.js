@@ -1020,15 +1020,20 @@ router.get('/products/:productId/licenses', async (req, res) => {
     const { productId } = req.params;
     const { allocated } = req.query;
 
-    let query = 'SELECT * FROM licenses WHERE product_id = ?';
+    let query = `
+      SELECT l.*, o.order_number
+      FROM licenses l
+      LEFT JOIN orders o ON l.order_id = o.id
+      WHERE l.product_id = ?
+    `;
     const params = [productId];
 
     if (allocated !== null && allocated !== undefined) {
-      query += ' AND allocated = ?';
+      query += ' AND l.allocated = ?';
       params.push(allocated === 'true');
     }
 
-    query += ' ORDER BY id DESC LIMIT 1000';
+    query += ' ORDER BY l.id DESC LIMIT 1000';
 
     const [licenses] = await db.execute(query, params);
     res.json(licenses);
@@ -1076,8 +1081,8 @@ router.post('/licenses/:licenseId/release', async (req, res) => {
     const { licenseId } = req.params;
 
     await db.execute(
-      `UPDATE licenses 
-       SET allocated = FALSE, order_id = NULL, allocated_at = NULL 
+      `UPDATE licenses
+       SET allocated = FALSE, order_id = NULL, allocated_at = NULL
        WHERE id = ?`,
       [licenseId]
     );
@@ -1087,6 +1092,78 @@ router.post('/licenses/:licenseId/release', async (req, res) => {
   } catch (error) {
     console.error('License release error:', error);
     res.status(500).json({ error: 'Failed to release license' });
+  }
+});
+
+// Bulk delete licenses
+router.post('/licenses/bulk-delete', async (req, res) => {
+  try {
+    const { licenseIds } = req.body;
+
+    if (!Array.isArray(licenseIds) || licenseIds.length === 0) {
+      return res.status(400).json({ error: 'licenseIds array is required' });
+    }
+
+    // Check if any licenses are allocated
+    const placeholders = licenseIds.map(() => '?').join(', ');
+    const [licenses] = await db.execute(
+      `SELECT id, allocated FROM licenses WHERE id IN (${placeholders})`,
+      licenseIds
+    );
+
+    const allocatedLicenses = licenses.filter(l => l.allocated);
+    if (allocatedLicenses.length > 0) {
+      return res.status(400).json({
+        error: `Cannot delete ${allocatedLicenses.length} allocated license(s). Release them first.`
+      });
+    }
+
+    // Delete all non-allocated licenses
+    await db.execute(
+      `DELETE FROM licenses WHERE id IN (${placeholders})`,
+      licenseIds
+    );
+
+    res.json({
+      success: true,
+      message: `Deleted ${licenseIds.length} license(s)`,
+      deleted: licenseIds.length
+    });
+
+  } catch (error) {
+    console.error('Bulk delete error:', error);
+    res.status(500).json({ error: 'Failed to delete licenses' });
+  }
+});
+
+// Bulk release licenses
+router.post('/licenses/bulk-release', async (req, res) => {
+  try {
+    const { licenseIds } = req.body;
+
+    if (!Array.isArray(licenseIds) || licenseIds.length === 0) {
+      return res.status(400).json({ error: 'licenseIds array is required' });
+    }
+
+    const placeholders = licenseIds.map(() => '?').join(', ');
+
+    // Release all licenses
+    const [result] = await db.execute(
+      `UPDATE licenses
+       SET allocated = FALSE, order_id = NULL, allocated_at = NULL
+       WHERE id IN (${placeholders})`,
+      licenseIds
+    );
+
+    res.json({
+      success: true,
+      message: `Released ${result.affectedRows} license(s)`,
+      released: result.affectedRows
+    });
+
+  } catch (error) {
+    console.error('Bulk release error:', error);
+    res.status(500).json({ error: 'Failed to release licenses' });
   }
 });
 
@@ -1375,10 +1452,10 @@ router.post('/orders/manual-send', async (req, res) => {
 
     // Create manual order
     const [orderResult] = await connection.execute(
-      `INSERT INTO orders 
-       (shop_id, shopify_order_id, order_number, customer_email, customer_first_name, 
+      `INSERT INTO orders
+       (shop_id, shopify_order_id, order_number, customer_email, customer_first_name,
         customer_last_name, order_status, order_type)
-       VALUES (?, ?, ?, ?, ?, ?, 'paid', 'manual')`,
+       VALUES (?, ?, ?, ?, ?, ?, 'free', 'manual')`,
       [
         product.shop_id,
         freeOrderId,
