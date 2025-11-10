@@ -222,8 +222,8 @@ function OrderDetails() {
           <h2 className="text-lg font-bold text-gray-900 mb-4">Order Status</h2>
           <div className="space-y-3">
             <div>
-              <p className="text-sm text-gray-600">Order ID</p>
-              <p className="font-mono text-sm text-gray-900">{order.shopify_order_id}</p>
+              <p className="text-sm text-gray-600">Order Number</p>
+              <p className="font-mono text-sm text-gray-900">{order.order_number}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Financial Status</p>

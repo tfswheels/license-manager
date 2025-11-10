@@ -75,7 +75,8 @@ export async function processOrder(shopDomain, orderData) {
     const orderLimitCheck = await canProcessOrder(shopId, shopDomain);
     if (!orderLimitCheck.allowed) {
       await connection.rollback();
-      console.warn(`⚠️ Order ${orderData.order_number} rejected: Monthly limit (${orderLimitCheck.limit}) reached`);
+      const orderNum = orderData.name || orderData.order_number || `#${orderData.id}`;
+      console.warn(`⚠️ Order ${orderNum} rejected: Monthly limit (${orderLimitCheck.limit}) reached`);
       throw new Error(`Monthly order limit of ${orderLimitCheck.limit} orders has been reached. Please upgrade your plan to process more orders.`);
     }
 
@@ -87,7 +88,8 @@ export async function processOrder(shopDomain, orderData) {
 
     if (existingOrders.length > 0) {
       await connection.commit();
-      console.log(`⚠️ Order ${orderData.order_number} already processed, skipping duplicate webhook`);
+      const orderNum = orderData.name || orderData.order_number || `#${orderData.id}`;
+      console.log(`⚠️ Order ${orderNum} already processed, skipping duplicate webhook`);
       return { success: true, orderId: existingOrders[0].id, duplicate: true };
     }
 
@@ -120,7 +122,7 @@ export async function processOrder(shopDomain, orderData) {
       [
         shopId,
         orderData.id.toString(),
-        orderData.order_number || orderData.name,
+        orderData.name || orderData.order_number || `#${orderData.id}`,
         customerEmail,
         customerFirstName,
         customerLastName,
@@ -178,7 +180,7 @@ export async function processOrder(shopDomain, orderData) {
           email: customerEmail,
           firstName: customerFirstName || 'Customer',
           lastName: customerLastName || '',
-          orderNumber: orderData.order_number || orderData.name,
+          orderNumber: orderData.name || orderData.order_number || `#${orderData.id}`,
           productName: lineItem.title,
           productId: dbProductId,
           licenses: licenses.map(l => l.license_key),
@@ -207,10 +209,11 @@ export async function processOrder(shopDomain, orderData) {
 
         // Send notification if uniqueness caused partial allocation
         if (uniquenessIssue && settings.notify_on_uniqueness_issue && settings.notification_email) {
+          const orderNum = orderData.name || orderData.order_number || `#${orderData.id}`;
           await sendNotificationEmail({
             to: settings.notification_email,
-            subject: `License Uniqueness Issue - Order ${orderData.order_number}`,
-            message: `Order ${orderData.order_number} requested ${quantity} licenses for "${lineItem.title}" but only ${licenses.length} unique licenses were available.`
+            subject: `License Uniqueness Issue - Order ${orderNum}`,
+            message: `Order ${orderNum} requested ${quantity} licenses for "${lineItem.title}" but only ${licenses.length} unique licenses were available.`
           });
         }
       } else {
@@ -224,7 +227,7 @@ export async function processOrder(shopDomain, orderData) {
             email: customerEmail,
             firstName: customerFirstName || 'Customer',
             lastName: customerLastName || '',
-            orderNumber: orderData.order_number || orderData.name,
+            orderNumber: orderData.name || orderData.order_number || `#${orderData.id}`,
             productName: lineItem.title,
             productId: dbProductId,
             licenses: [],
@@ -254,17 +257,19 @@ export async function processOrder(shopDomain, orderData) {
 
         // Send notification about out of stock
         if (settings.notify_on_out_of_stock && settings.notification_email) {
+          const orderNum = orderData.name || orderData.order_number || `#${orderData.id}`;
           await sendNotificationEmail({
             to: settings.notification_email,
-            subject: `Out of Stock Alert - Order ${orderData.order_number}`,
-            message: `Order ${orderData.order_number} could not be fulfilled for "${lineItem.title}" (Quantity: ${quantity}). No licenses available in the database.`
+            subject: `Out of Stock Alert - Order ${orderNum}`,
+            message: `Order ${orderNum} could not be fulfilled for "${lineItem.title}" (Quantity: ${quantity}). No licenses available in the database.`
           });
         }
       }
     }
 
     await connection.commit();
-    console.log(`✅ Order ${orderData.order_number} processed successfully`);
+    const orderNum = orderData.name || orderData.order_number || `#${orderData.id}`;
+    console.log(`✅ Order ${orderNum} processed successfully`);
 
     return { success: true, orderId };
 

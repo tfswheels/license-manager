@@ -19,6 +19,8 @@ function ProductLicenses() {
   const [manualInput, setManualInput] = useState('');
   const [selectedLicenses, setSelectedLicenses] = useState(new Set());
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  const [pageSize, setPageSize] = useState(50);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     loadData();
@@ -239,10 +241,39 @@ function ProductLicenses() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedLicenses.size === licenses.length) {
-      setSelectedLicenses(new Set());
+    const currentPageLicenses = paginatedLicenses.map(l => l.id);
+    const allCurrentSelected = currentPageLicenses.every(id => selectedLicenses.has(id));
+
+    const newSelection = new Set(selectedLicenses);
+    if (allCurrentSelected) {
+      // Deselect all on current page
+      currentPageLicenses.forEach(id => newSelection.delete(id));
     } else {
-      setSelectedLicenses(new Set(licenses.map(l => l.id)));
+      // Select all on current page
+      currentPageLicenses.forEach(id => newSelection.add(id));
+    }
+    setSelectedLicenses(newSelection);
+  };
+
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(licenses.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedLicenses = licenses.slice(startIndex, endIndex);
+
+  const handlePageSizeChange = (newSize) => {
+    setPageSize(newSize);
+    setCurrentPage(1); // Reset to first page
+  };
+
+  const goToPage = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
     }
   };
 
@@ -607,9 +638,13 @@ function ProductLicenses() {
                     <button
                       onClick={toggleSelectAll}
                       className="p-1 hover:bg-gray-200 rounded transition-colors"
-                      title={selectedLicenses.size === licenses.length ? 'Deselect All' : 'Select All'}
+                      title={
+                        paginatedLicenses.every(l => selectedLicenses.has(l.id))
+                          ? 'Deselect All on Page'
+                          : 'Select All on Page'
+                      }
                     >
-                      {selectedLicenses.size === licenses.length ? (
+                      {paginatedLicenses.every(l => selectedLicenses.has(l.id)) && paginatedLicenses.length > 0 ? (
                         <CheckSquare className="w-5 h-5 text-blue-600" />
                       ) : (
                         <Square className="w-5 h-5 text-gray-400" />
@@ -623,7 +658,7 @@ function ProductLicenses() {
                 </tr>
               </thead>
               <tbody>
-                {licenses.map((license) => (
+                {paginatedLicenses.map((license) => (
                   <tr key={license.id} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="py-3 px-4">
                       <button
@@ -679,6 +714,96 @@ function ProductLicenses() {
                 ))}
               </tbody>
             </table>
+
+            {/* Pagination Controls */}
+            {licenses.length > 0 && (
+              <div className="mt-4 flex items-center justify-between border-t border-gray-200 pt-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-gray-600">
+                    Showing {startIndex + 1}-{Math.min(endIndex, licenses.length)} of {licenses.length}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-600">Per page:</label>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                      className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                      <option value={200}>200</option>
+                      <option value={500}>500</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Page Navigation */}
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => goToPage(1)}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    >
+                      First
+                    </button>
+                    <button
+                      onClick={() => goToPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    >
+                      Previous
+                    </button>
+
+                    {/* Page numbers */}
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => goToPage(pageNum)}
+                            className={`px-3 py-1 rounded-lg border text-sm ${
+                              currentPage === pageNum
+                                ? 'bg-blue-600 text-white border-blue-600'
+                                : 'border-gray-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      onClick={() => goToPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    >
+                      Next
+                    </button>
+                    <button
+                      onClick={() => goToPage(totalPages)}
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    >
+                      Last
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

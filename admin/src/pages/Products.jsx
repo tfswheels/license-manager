@@ -423,27 +423,26 @@ function Products() {
                         </div>
                       </td>
                       <td className="py-4 px-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {/* NEW: Send License Button */}
+                      <div className="flex items-center justify-end gap-1">
+                        {/* Send License Button */}
                         <button
                           onClick={() => handleManualSend(product)}
-                          className="btn-secondary text-sm"
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                           title="Send license to customer"
                         >
-                          <Send className="w-4 h-4 inline mr-1" />
-                          Send
+                          <Send className="w-4 h-4" />
                         </button>
 
-                        {/* Existing: Manage Licenses Button */}
+                        {/* Manage Licenses Button */}
                         <button
                           onClick={() => navigate(`/products/${product.id}/licenses`)}
-                          className="btn-secondary text-sm"
+                          className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                          title="Manage licenses"
                         >
-                          <Upload className="w-4 h-4 inline mr-1" />
-                          Manage Licenses
+                          <Upload className="w-4 h-4" />
                         </button>
 
-                        {/* Existing: Delete Button */}
+                        {/* Delete Button */}
                         <button
                           onClick={() => handleDeleteClick(product)}
                           className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -535,24 +534,26 @@ function Products() {
                   <div className="card-actions">
                     <button
                       onClick={() => handleManualSend(product)}
-                      className="btn-secondary"
+                      className="p-3 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-2"
+                      title="Send license to customer"
                     >
-                      <Send className="w-4 h-4 inline mr-1" />
-                      Send
+                      <Send className="w-5 h-5" />
+                      <span className="text-sm font-medium">Send</span>
                     </button>
                     <button
                       onClick={() => navigate(`/products/${product.id}/licenses`)}
-                      className="btn-secondary"
+                      className="p-3 text-green-600 hover:bg-green-50 rounded-lg transition-colors flex items-center gap-2"
+                      title="Manage licenses"
                     >
-                      <Upload className="w-4 h-4 inline mr-1" />
-                      Manage
+                      <Upload className="w-5 h-5" />
+                      <span className="text-sm font-medium">Manage</span>
                     </button>
                     <button
                       onClick={() => handleDeleteClick(product)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Delete"
+                      className="p-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Delete product from app"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-5 h-5" />
                     </button>
                   </div>
                 </div>
