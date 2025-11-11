@@ -149,9 +149,24 @@ export default function OnboardingChecklist() {
   };
 
   const toggleMinimize = () => {
-    const newMinimized = !isMinimized;
-    setIsMinimized(newMinimized);
-    localStorage.setItem('onboarding_checklist_minimized', newMinimized.toString());
+    // If currently expanded and user is minimizing, offer to close permanently
+    if (!isMinimized) {
+      const choice = window.confirm('Close this checklist?\n\nOK = Close permanently\nCancel = Just minimize');
+
+      if (choice) {
+        // User clicked OK - close permanently
+        localStorage.setItem('onboarding_checklist_dismissed', 'true');
+        setIsVisible(false);
+      } else {
+        // User clicked Cancel - just minimize
+        setIsMinimized(true);
+        localStorage.setItem('onboarding_checklist_minimized', 'true');
+      }
+    } else {
+      // If currently minimized, just expand it
+      setIsMinimized(false);
+      localStorage.setItem('onboarding_checklist_minimized', 'false');
+    }
   };
 
   const handleDismiss = (e) => {
