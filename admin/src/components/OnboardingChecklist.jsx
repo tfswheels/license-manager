@@ -154,7 +154,12 @@ export default function OnboardingChecklist() {
     localStorage.setItem('onboarding_checklist_minimized', newMinimized.toString());
   };
 
-  const handleDismiss = () => {
+  const handleDismiss = (e) => {
+    // Prevent any event bubbling that might interfere in embedded context
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     // Dismiss immediately without confirmation for better mobile experience
     localStorage.setItem('onboarding_checklist_dismissed', 'true');
     setIsVisible(false);
@@ -202,20 +207,24 @@ export default function OnboardingChecklist() {
             <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
             <span className="truncate">Setup Checklist</span>
           </h3>
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-2 flex-shrink-0 pr-1">
             <button
               onClick={toggleMinimize}
-              className="text-white hover:bg-white/20 rounded p-2 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+              className="text-white hover:bg-white/20 rounded p-2 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center relative z-50"
               aria-label={isMinimized ? 'Expand' : 'Minimize'}
+              style={{ WebkitTapHighlightColor: 'transparent' }}
             >
-              {isMinimized ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+              {isMinimized ? <ChevronUp className="w-5 h-5 pointer-events-none" /> : <ChevronDown className="w-5 h-5 pointer-events-none" />}
             </button>
             <button
               onClick={handleDismiss}
-              className="text-white hover:bg-white/20 rounded p-2 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+              onTouchEnd={handleDismiss}
+              type="button"
+              className="text-white hover:bg-white/20 rounded p-2 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center relative z-50"
               aria-label="Close permanently"
+              style={{ WebkitTapHighlightColor: 'transparent', pointerEvents: 'auto' }}
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5 pointer-events-none" />
             </button>
           </div>
         </div>
