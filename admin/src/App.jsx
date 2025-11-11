@@ -26,6 +26,9 @@ function App() {
 
   // Check if we have a shop parameter
   useEffect(() => {
+    // Log app version for debugging
+    console.log('🚀 License Manager Admin v1.0.1 - Build', new Date().toISOString());
+
     const params = new URLSearchParams(window.location.search);
     const shop = params.get('shop') ||
                  sessionStorage.getItem('shopify_shop') ||
