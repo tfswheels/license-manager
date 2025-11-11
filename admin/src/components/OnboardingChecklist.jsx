@@ -195,28 +195,28 @@ export default function OnboardingChecklist() {
   const completedCount = completedSteps.size;
 
   return (
-    <div className="fixed bottom-6 right-6 z-40 w-96 bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden">
+    <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 w-[calc(100vw-2rem)] sm:w-96 max-w-md bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden">
       {/* Header */}
-      <div className="bg-gradient-to-r from-green-600 to-green-500 text-white p-4">
+      <div className="bg-gradient-to-r from-green-600 to-green-500 text-white p-3 sm:p-4">
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-bold text-lg flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5" />
             Setup Checklist
           </h3>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <button
               onClick={toggleMinimize}
-              className="text-white hover:bg-white/20 rounded p-1 transition-colors"
+              className="text-white hover:bg-white/20 rounded p-2 transition-colors touch-manipulation"
               aria-label={isMinimized ? 'Expand' : 'Minimize'}
             >
-              {isMinimized ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              {isMinimized ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
             </button>
             <button
               onClick={handleDismiss}
-              className="text-white hover:bg-white/20 rounded p-1 transition-colors"
+              className="text-white hover:bg-white/20 rounded p-2 transition-colors touch-manipulation"
               aria-label="Close permanently"
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -238,8 +238,8 @@ export default function OnboardingChecklist() {
 
       {/* Checklist items */}
       {!isMinimized && (
-        <div className="max-h-96 overflow-y-auto">
-          <div className="p-4 space-y-3">
+        <div className="max-h-[50vh] sm:max-h-96 overflow-y-auto">
+          <div className="p-3 sm:p-4 space-y-2 sm:space-y-3">
             {steps.map((step) => {
               const Icon = step.icon;
               const isCompleted = completedSteps.has(step.id);

@@ -77,7 +77,7 @@
 
   /* Show card view */
   .card-view {
-    display: block;
+    display: flex !important;
   }
 
   /* Page headers stack vertically */
@@ -132,6 +132,7 @@
 /* Card View Styles */
 .card-view {
   display: none;
+  flex-direction: column;
   gap: 1rem;
 }
 
