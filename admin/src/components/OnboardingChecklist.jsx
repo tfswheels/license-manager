@@ -155,13 +155,9 @@ export default function OnboardingChecklist() {
   };
 
   const handleDismiss = () => {
-    // Simple confirm that works on all devices
-    const shouldDismiss = window.confirm('Close this checklist permanently?');
-
-    if (shouldDismiss) {
-      localStorage.setItem('onboarding_checklist_dismissed', 'true');
-      setIsVisible(false);
-    }
+    // Dismiss immediately without confirmation for better mobile experience
+    localStorage.setItem('onboarding_checklist_dismissed', 'true');
+    setIsVisible(false);
   };
 
   const goToStep = (step) => {
@@ -200,23 +196,23 @@ export default function OnboardingChecklist() {
   return (
     <div className="fixed bottom-4 left-4 right-4 sm:bottom-6 sm:left-auto sm:right-6 z-40 sm:w-96 max-w-md bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden">
       {/* Header */}
-      <div className="bg-gradient-to-r from-green-600 to-green-500 text-white p-3 sm:p-4">
-        <div className="flex items-center justify-between mb-2">
+      <div className="bg-gradient-to-r from-green-600 to-green-500 text-white p-4 sm:p-4">
+        <div className="flex items-center justify-between gap-3 mb-2">
           <h3 className="font-bold text-base sm:text-lg flex items-center gap-2 flex-1 min-w-0">
             <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
             <span className="truncate">Setup Checklist</span>
           </h3>
-          <div className="flex items-center gap-1 flex-shrink-0">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <button
               onClick={toggleMinimize}
-              className="text-white hover:bg-white/20 rounded p-2 transition-colors touch-manipulation min-w-[40px] min-h-[40px] flex items-center justify-center"
+              className="text-white hover:bg-white/20 rounded p-2 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
               aria-label={isMinimized ? 'Expand' : 'Minimize'}
             >
               {isMinimized ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
             </button>
             <button
               onClick={handleDismiss}
-              className="text-white hover:bg-white/20 rounded p-2 transition-colors touch-manipulation min-w-[40px] min-h-[40px] flex items-center justify-center"
+              className="text-white hover:bg-white/20 rounded p-2 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
               aria-label="Close permanently"
             >
               <X className="w-5 h-5" />
@@ -226,9 +222,9 @@ export default function OnboardingChecklist() {
 
         {/* Progress bar */}
         <div className="space-y-1">
-          <div className="flex justify-between text-xs sm:text-sm">
-            <span>{completedCount} of {steps.length} completed</span>
-            <span className="flex-shrink-0 ml-2">{Math.round(progress)}%</span>
+          <div className="flex justify-between items-center gap-2 text-xs sm:text-sm">
+            <span className="flex-shrink-0">{completedCount} of {steps.length} completed</span>
+            <span className="flex-shrink-0">{Math.round(progress)}%</span>
           </div>
           <div className="w-full bg-white/30 rounded-full h-2">
             <div
