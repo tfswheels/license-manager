@@ -5,12 +5,11 @@ application_url = "https://digikeyhq.com"
 embedded = true
 
 [access_scopes]
-# Core scopes that were in the original installation
-scopes = "read_products,read_customers,write_orders"
+# Core scopes - write_orders implicitly includes read_orders
+# Adding assigned fulfillment scopes for modern Fulfillment Orders API
+scopes = "read_products,read_customers,write_orders,write_assigned_fulfillment_orders"
 
-# New scope being added after initial installation - must be optional
-# This allows existing installations to dynamically request this scope
-optional_scopes = ["read_orders"]
+optional_scopes = []
 
 [auth]
 redirect_urls = [
