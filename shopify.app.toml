@@ -5,7 +5,12 @@ application_url = "https://digikeyhq.com"
 embedded = true
 
 [access_scopes]
-scopes = "read_products,read_orders,read_customers,write_orders"
+# Testing scope update propagation - temporarily removed read_products
+scopes = "read_orders,read_customers,write_orders"
+
+# Use optional_scopes for any scopes that might be requested later
+# or that may not be granted initially
+optional_scopes = []
 
 [auth]
 redirect_urls = [
