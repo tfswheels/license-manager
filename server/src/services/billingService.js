@@ -269,6 +269,22 @@ export async function cancelSubscription(shop, accessToken, subscriptionId) {
 /**
  * Store subscription information in the database
  */
+// Map billing plan keys to database enum values
+const PLAN_KEY_TO_DB_ENUM = {
+  'FREE': 'FREE',
+  'STARTER': 'BASIC',
+  'GROWTH': 'PRO',
+  'SCALE': 'ENTERPRISE'
+};
+
+// Reverse mapping for reading from database
+const DB_ENUM_TO_PLAN_KEY = {
+  'FREE': 'FREE',
+  'BASIC': 'STARTER',
+  'PRO': 'GROWTH',
+  'ENTERPRISE': 'SCALE'
+};
+
 export async function saveSubscriptionToDatabase(shopDomain, subscriptionData, planKey) {
   try {
     const [shops] = await db.query('SELECT id FROM shops WHERE shop_domain = ?', [shopDomain]);
@@ -279,44 +295,50 @@ export async function saveSubscriptionToDatabase(shopDomain, subscriptionData, p
 
     const shopId = shops[0].id;
 
+    // Map plan key to database enum value
+    const dbPlanEnum = PLAN_KEY_TO_DB_ENUM[planKey] || 'FREE';
+
+    // Map Shopify status to database status
+    const statusMap = {
+      'ACTIVE': 'active',
+      'CANCELLED': 'cancelled',
+      'EXPIRED': 'expired',
+      'PENDING': 'trial'
+    };
+    const dbStatus = statusMap[subscriptionData.status] || 'trial';
+
     await db.query(`
       INSERT INTO subscriptions (
         shop_id,
-        subscription_id,
-        plan_name,
-        plan_key,
+        shopify_subscription_id,
+        plan,
         status,
         price,
-        interval_type,
         trial_days,
         current_period_end,
-        is_test,
         created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
       ON DUPLICATE KEY UPDATE
         status = VALUES(status),
-        plan_name = VALUES(plan_name),
-        plan_key = VALUES(plan_key),
+        plan = VALUES(plan),
         price = VALUES(price),
         current_period_end = VALUES(current_period_end),
         updated_at = NOW()
     `, [
       shopId,
       subscriptionData.id,
-      subscriptionData.name,
-      planKey,
-      subscriptionData.status,
+      dbPlanEnum,
+      dbStatus,
       BILLING_PLANS[planKey].price,
-      BILLING_PLANS[planKey].interval,
       subscriptionData.trialDays || 0,
-      subscriptionData.currentPeriodEnd || null,
-      subscriptionData.test || false
+      subscriptionData.currentPeriodEnd || null
     ]);
 
-    console.log(`✅ Subscription saved for shop ${shopDomain}`);
+    console.log(`✅ Subscription saved for shop ${shopDomain}: ${planKey} → ${dbPlanEnum}`);
 
   } catch (error) {
     console.error('Error saving subscription to database:', error);
+    console.error('Error details:', error.message);
     throw error;
   }
 }
@@ -339,7 +361,19 @@ export async function getShopSubscription(shopDomain) {
       return null;
     }
 
-    return rows[0];
+    const subscription = rows[0];
+
+    // Map database enum back to plan key for code compatibility
+    if (subscription.plan) {
+      subscription.plan_key = DB_ENUM_TO_PLAN_KEY[subscription.plan] || 'FREE';
+    }
+
+    // Map database status to uppercase for code compatibility
+    if (subscription.status) {
+      subscription.subscription_id = subscription.shopify_subscription_id;
+    }
+
+    return subscription;
 
   } catch (error) {
     console.error('Error fetching shop subscription:', error);
