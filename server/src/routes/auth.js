@@ -12,9 +12,11 @@ router.get('/install', async (req, res) => {
       return res.status(400).json({ error: 'Missing shop parameter' });
     }
 
-    const shopDomain = shop.includes('.myshopify.com') 
-      ? shop 
+    const shopDomain = shop.includes('.myshopify.com')
+      ? shop
       : `${shop}.myshopify.com`;
+
+    console.log('🔵 Starting OAuth flow for:', shopDomain);
 
     await shopify.auth.begin({
       shop: shopDomain,
@@ -26,9 +28,9 @@ router.get('/install', async (req, res) => {
 
   } catch (error) {
     console.error('OAuth begin error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to start installation',
-      message: error.message 
+      message: error.message
     });
   }
 });
