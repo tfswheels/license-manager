@@ -21,31 +21,70 @@ async function fulfillShopifyOrder(shopDomain, accessToken, shopifyOrderId, line
       session: { shop: shopDomain, accessToken }
     });
 
-    // Create fulfillment for this order
+    // Step 1: Get fulfillment orders for this order
+    const fulfillmentOrdersResponse = await client.get({
+      path: `orders/${shopifyOrderId}/fulfillment_orders`
+    });
+
+    const fulfillmentOrders = fulfillmentOrdersResponse.body.fulfillment_orders || [];
+
+    if (fulfillmentOrders.length === 0) {
+      console.log('No fulfillment orders found for order:', shopifyOrderId);
+      return { success: false, reason: 'no_fulfillment_orders' };
+    }
+
+    // Find the fulfillment order that contains our line item
+    let targetFulfillmentOrder = null;
+    for (const fo of fulfillmentOrders) {
+      const lineItemIds = fo.line_items?.map(li => li.line_item_id) || [];
+      if (lineItemIds.includes(parseInt(lineItemId))) {
+        targetFulfillmentOrder = fo;
+        break;
+      }
+    }
+
+    // If not found, use the first open fulfillment order
+    if (!targetFulfillmentOrder) {
+      targetFulfillmentOrder = fulfillmentOrders.find(fo => fo.status === 'open');
+    }
+
+    if (!targetFulfillmentOrder) {
+      console.log('No open fulfillment order found for order:', shopifyOrderId);
+      return { success: false, reason: 'no_open_fulfillment_order' };
+    }
+
+    // Step 2: Create fulfillment using the new API
     const fulfillmentData = {
       fulfillment: {
-        location_id: null, // Not needed for digital products
-        tracking_number: null,
-        notify_customer: false, // We already sent our own email
-        line_items: [
+        line_items_by_fulfillment_order: [
           {
-            id: lineItemId
+            fulfillment_order_id: targetFulfillmentOrder.id,
+            fulfillment_order_line_items: [
+              {
+                id: targetFulfillmentOrder.line_items.find(li => li.line_item_id === parseInt(lineItemId))?.id || targetFulfillmentOrder.line_items[0].id,
+                quantity: 1
+              }
+            ]
           }
-        ]
+        ],
+        notify_customer: false // We already sent our own email
       }
     };
 
     await client.post({
-      path: `orders/${shopifyOrderId}/fulfillments`,
+      path: 'fulfillments',
       data: fulfillmentData
     });
 
-    console.log(`✅ Fulfilled Shopify order ${shopifyOrderId}`);
+    console.log(`✅ Fulfilled Shopify order ${shopifyOrderId} line item ${lineItemId}`);
     return { success: true };
 
   } catch (error) {
     // Don't fail the entire order process if fulfillment fails
     console.error(`⚠️ Failed to fulfill Shopify order ${shopifyOrderId}:`, error.message);
+    if (error.response?.body) {
+      console.error('Shopify error details:', JSON.stringify(error.response.body, null, 2));
+    }
     return { success: false, error: error.message };
   }
 }
