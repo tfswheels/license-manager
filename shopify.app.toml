@@ -5,7 +5,7 @@ application_url = "https://digikeyhq.com"
 embedded = true
 
 [access_scopes]
-scopes = "write_products,read_orders,write_customers,read_customers"
+scopes = "read_products,read_orders,read_customers,write_orders"
 
 [auth]
 redirect_urls = [
