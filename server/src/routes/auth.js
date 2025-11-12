@@ -288,7 +288,7 @@ router.get('/status', async (req, res) => {
     }
 
     const [rows] = await db.execute(
-      'SELECT shop_domain, installed_at FROM shops WHERE shop_domain = ?',
+      'SELECT shop_domain, scopes, installed_at FROM shops WHERE shop_domain = ?',
       [shop]
     );
 
@@ -296,10 +296,33 @@ router.get('/status', async (req, res) => {
       return res.json({ installed: false });
     }
 
-    res.json({ 
+    // Get required scopes from environment
+    const requiredScopesStr = process.env.SHOPIFY_SCOPES || '';
+    const requiredScopes = requiredScopesStr.split(',').map(s => s.trim()).filter(Boolean).sort();
+
+    // Get current scopes from database
+    const currentScopesStr = rows[0].scopes || '';
+    const currentScopes = currentScopesStr.split(',').map(s => s.trim()).filter(Boolean).sort();
+
+    // Check if scopes match (both arrays should have same items)
+    const scopesMatch =
+      requiredScopes.length === currentScopes.length &&
+      requiredScopes.every((scope, index) => scope === currentScopes[index]);
+
+    console.log('🔍 Scope Check:', {
+      shop,
+      required: requiredScopes,
+      current: currentScopes,
+      match: scopesMatch
+    });
+
+    res.json({
       installed: true,
       shop: rows[0].shop_domain,
-      installedAt: rows[0].installed_at
+      installedAt: rows[0].installed_at,
+      scopesMatch,
+      currentScopes: currentScopes,
+      requiredScopes: requiredScopes
     });
 
   } catch (error) {

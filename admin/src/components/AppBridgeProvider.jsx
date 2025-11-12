@@ -70,11 +70,16 @@ export default function ShopifyAppBridgeProvider({ children }) {
       try {
         console.log('🔍 Checking if shop is installed:', shop);
 
-        // Check if shop exists in database
+        // Check if shop exists in database and has correct scopes
         const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/status?shop=${shop}`);
         const data = await response.json();
 
-        if (!data.installed) {
+        // Need to redirect to OAuth if:
+        // 1. Shop not installed at all, OR
+        // 2. Shop is installed but scopes don't match (needs re-authentication)
+        const needsOAuth = !data.installed || !data.scopesMatch;
+
+        if (needsOAuth) {
           if (installing === 'true') {
             // OAuth already happened (we have installing param), just waiting for DB sync
             // Keep loading screen showing by NOT setting isInitialCheck to false
@@ -88,8 +93,14 @@ export default function ShopifyAppBridgeProvider({ children }) {
             return;
           }
 
-          // Shop not in DB and no installing param - need to start OAuth
-          console.log('⚠️ Shop not installed in database, redirecting to OAuth...');
+          // Shop needs OAuth - either not installed or scopes are outdated
+          if (!data.installed) {
+            console.log('⚠️ Shop not installed in database, redirecting to OAuth...');
+          } else {
+            console.log('⚠️ Shop scopes are outdated, forcing re-authentication...');
+            console.log('   Current scopes:', data.currentScopes);
+            console.log('   Required scopes:', data.requiredScopes);
+          }
 
           const authUrl = `${import.meta.env.VITE_API_URL}/auth/install?shop=${shop}`;
           console.log('🔄 Redirecting to:', authUrl);
@@ -100,7 +111,7 @@ export default function ShopifyAppBridgeProvider({ children }) {
           return; // Don't continue rendering
         }
 
-        console.log('✅ Shop is installed, proceeding normally');
+        console.log('✅ Shop is installed with correct scopes, proceeding normally');
 
         // Mark installation as complete and allow app to render
         setIsInstallingComplete(true);
