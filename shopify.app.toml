@@ -5,12 +5,12 @@ application_url = "https://digikeyhq.com"
 embedded = true
 
 [access_scopes]
-# Step 2: Add read_orders back as if it's a new scope
-scopes = "read_products,read_orders,read_customers,write_orders"
+# Core scopes that were in the original installation
+scopes = "read_products,read_customers,write_orders"
 
-# Use optional_scopes for any scopes that might be requested later
-# or that may not be granted initially
-optional_scopes = []
+# New scope being added after initial installation - must be optional
+# This allows existing installations to dynamically request this scope
+optional_scopes = ["read_orders"]
 
 [auth]
 redirect_urls = [
