@@ -5,8 +5,8 @@ application_url = "https://digikeyhq.com"
 embedded = true
 
 [access_scopes]
-# Step 1: Add read_products back, remove read_orders to clear its cache
-scopes = "read_products,read_customers,write_orders"
+# Step 2: Add read_orders back as if it's a new scope
+scopes = "read_products,read_orders,read_customers,write_orders"
 
 # Use optional_scopes for any scopes that might be requested later
 # or that may not be granted initially
