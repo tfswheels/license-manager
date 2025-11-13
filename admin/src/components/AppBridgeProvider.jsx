@@ -83,8 +83,9 @@ export default function ShopifyAppBridgeProvider({ children }) {
 
         // Need to redirect to OAuth if:
         // 1. Shop not installed at all, OR
-        // 2. Shop is installed but scopes don't match (needs re-authentication)
-        const needsOAuth = !data.installed || !data.scopesMatch;
+        // 2. Shop is installed but scopes don't match (needs re-authentication), OR
+        // 3. Shop is installed but access token is invalid/revoked
+        const needsOAuth = !data.installed || !data.scopesMatch || !data.tokenIsValid;
 
         if (needsOAuth) {
           if (installing === 'true') {
@@ -100,13 +101,16 @@ export default function ShopifyAppBridgeProvider({ children }) {
             return;
           }
 
-          // Shop needs OAuth - either not installed or scopes are outdated
+          // Shop needs OAuth - either not installed, scopes outdated, or token invalid
           if (!data.installed) {
             console.log('⚠️ Shop not installed in database, redirecting to OAuth...');
-          } else {
+          } else if (!data.scopesMatch) {
             console.log('⚠️ Shop scopes are outdated, forcing re-authentication...');
             console.log('   Current scopes:', data.currentScopes);
             console.log('   Required scopes:', data.requiredScopes);
+          } else if (!data.tokenIsValid) {
+            console.log('⚠️ Access token is invalid/revoked, forcing re-authentication...');
+            console.log('   This happens when app is uninstalled and reinstalled');
           }
 
           const authUrl = `${import.meta.env.VITE_API_URL}/auth/install?shop=${shop}`;

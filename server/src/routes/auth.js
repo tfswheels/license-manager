@@ -311,12 +311,31 @@ router.get('/status', async (req, res) => {
       requiredScopes.length === currentScopes.length &&
       requiredScopes.every((scope, index) => scope === currentScopes[index]);
 
+    // Validate the access token by making a test API call
+    let tokenIsValid = false;
+    if (rows[0].access_token) {
+      try {
+        const client = new shopify.clients.Rest({
+          session: { shop, accessToken: rows[0].access_token }
+        });
+
+        // Make a lightweight API call to test token validity
+        await client.get({ path: 'shop' });
+        tokenIsValid = true;
+        console.log('✅ Access token is valid');
+      } catch (error) {
+        console.log('❌ Access token is invalid or revoked:', error.message);
+        tokenIsValid = false;
+      }
+    }
+
     console.log('🔍 Scope Check:', {
       shop,
       required: requiredScopes,
       current: currentScopes,
       match: scopesMatch,
       hasToken: !!rows[0].access_token,
+      tokenIsValid,
       tokenPreview: rows[0].access_token ? rows[0].access_token.substring(0, 20) + '...' : 'NONE',
       installedAt: rows[0].installed_at,
       updatedAt: rows[0].updated_at
@@ -328,9 +347,10 @@ router.get('/status', async (req, res) => {
       installedAt: rows[0].installed_at,
       updatedAt: rows[0].updated_at,
       scopesMatch,
+      tokenIsValid,
       currentScopes: currentScopes,
       requiredScopes: requiredScopes,
-      hasValidToken: !!rows[0].access_token
+      hasValidToken: !!rows[0].access_token && tokenIsValid
     });
 
   } catch (error) {
