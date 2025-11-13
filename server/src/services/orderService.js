@@ -100,59 +100,12 @@ async function fulfillShopifyOrder(shopDomain, accessToken, shopifyOrderId, line
     if (fulfillmentOrders.length === 0) {
       console.log('❌ No fulfillment orders found for order:', shopifyOrderId);
       console.log('💡 Order likely has no shipping address (common for digital products)');
-      console.log(`💡 Attempting legacy fulfillment API with proper location...`);
+      console.log('💡 Skipping fulfillment for digital product - licenses already delivered via email');
 
-      // Fallback: Use legacy fulfillment API for orders without fulfillment_orders
-      // This happens when orders have no shipping address
-      try {
-        // Get the shop's primary location
-        const locationsResponse = await client.get({
-          path: 'locations'
-        });
-        const primaryLocation = locationsResponse.body.locations.find(loc => loc.active) || locationsResponse.body.locations[0];
-
-        if (!primaryLocation) {
-          console.error('❌ No active location found for shop');
-          return { success: false, reason: 'no_location' };
-        }
-
-        console.log(`📍 Using location: ${primaryLocation.name} (ID: ${primaryLocation.id})`);
-
-        // Find the line item to fulfill
-        const lineItemToFulfill = order.line_items.find(li => li.id?.toString() === lineItemId);
-
-        if (!lineItemToFulfill) {
-          console.error(`❌ Line item ${lineItemId} not found in order`);
-          return { success: false, reason: 'line_item_not_found' };
-        }
-
-        // Create fulfillment with proper line items
-        await client.post({
-          path: `orders/${shopifyOrderId}/fulfillments`,
-          data: {
-            fulfillment: {
-              location_id: primaryLocation.id,
-              tracking_number: null,
-              notify_customer: false,
-              line_items: [
-                {
-                  id: lineItemToFulfill.id,
-                  quantity: lineItemToFulfill.quantity
-                }
-              ]
-            }
-          }
-        });
-
-        console.log(`✅ Fulfilled order ${shopifyOrderId} using legacy API (location: ${primaryLocation.name})`);
-        return { success: true, method: 'legacy' };
-      } catch (legacyError) {
-        console.error(`❌ Legacy fulfillment also failed:`, legacyError.message);
-        if (legacyError.response?.body) {
-          console.error('Shopify error:', JSON.stringify(legacyError.response.body, null, 2));
-        }
-        return { success: false, reason: 'no_fulfillment_orders' };
-      }
+      // For digital products without shipping, we don't need to create a Shopify fulfillment
+      // The order is considered "fulfilled" once the license keys are delivered via email
+      // Shopify's fulfillment API is primarily for tracking physical shipments
+      return { success: true, method: 'digital_no_fulfillment', reason: 'Digital product - no shipping required' };
     }
 
     // Find the fulfillment order that contains our line item
@@ -213,6 +166,7 @@ async function fulfillShopifyOrder(shopDomain, accessToken, shopifyOrderId, line
 
 export async function processOrder(shopDomain, orderData) {
   const connection = await db.getConnection();
+  let shopId = null; // Declare outside try block so it's accessible in catch
 
   try {
     await connection.beginTransaction();
@@ -226,7 +180,7 @@ export async function processOrder(shopDomain, orderData) {
       throw new Error(`Shop not found: ${shopDomain}`);
     }
 
-    const shopId = shops[0].id;
+    shopId = shops[0].id;
     const accessToken = shops[0].access_token;
 
     // Extract shop name from domain (e.g., "mystore" from "mystore.myshopify.com")
