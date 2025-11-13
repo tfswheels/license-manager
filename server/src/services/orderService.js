@@ -28,8 +28,14 @@ async function fulfillShopifyOrder(shopDomain, accessToken, shopifyOrderId, line
 
     const fulfillmentOrders = fulfillmentOrdersResponse.body.fulfillment_orders || [];
 
+    console.log(`📦 Found ${fulfillmentOrders.length} fulfillment orders for order ${shopifyOrderId}`);
+    if (fulfillmentOrders.length > 0) {
+      console.log('📦 Fulfillment orders:', JSON.stringify(fulfillmentOrders, null, 2));
+    }
+
     if (fulfillmentOrders.length === 0) {
-      console.log('No fulfillment orders found for order:', shopifyOrderId);
+      console.log('❌ No fulfillment orders found for order:', shopifyOrderId);
+      console.log('💡 This usually means the product is not set to require fulfillment/shipping');
       return { success: false, reason: 'no_fulfillment_orders' };
     }
 
