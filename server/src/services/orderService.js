@@ -75,69 +75,106 @@ async function fulfillShopifyOrder(shopDomain, accessToken, shopifyOrderId, line
       session: { shop: shopDomain, accessToken }
     });
 
-    // Debug: Get the full order details first to see fulfillment status
+    // Step 1: Get the order details to check fulfillment status
     console.log(`🔍 Fetching order details for ${shopifyOrderId}...`);
     const orderResponse = await client.get({
       path: `orders/${shopifyOrderId}`
     });
     const order = orderResponse.body.order;
+    
     console.log(`🔍 Order fulfillment_status: ${order.fulfillment_status}`);
     console.log(`🔍 Order financial_status: ${order.financial_status}`);
-    console.log(`🔍 Order requires_shipping: ${order.line_items?.[0]?.requires_shipping}`);
-    console.log(`🔍 Order line_items:`, JSON.stringify(order.line_items?.map(li => ({
-      id: li.id,
-      name: li.name,
-      requires_shipping: li.requires_shipping,
-      fulfillable_quantity: li.fulfillable_quantity,
-      fulfillment_service: li.fulfillment_service,
-      fulfillment_status: li.fulfillment_status
-    })), null, 2));
+    
+    // Check if order is already fulfilled
+    if (order.fulfillment_status === 'fulfilled') {
+      console.log(`✅ Order ${shopifyOrderId} is already fulfilled`);
+      return { success: true, reason: 'already_fulfilled' };
+    }
 
-    // Step 1: Get fulfillment orders for this order
-    console.log(`🔍 Fetching fulfillment orders for order ${shopifyOrderId}...`);
+    // Step 2: Get fulfillment orders for this order
     const fulfillmentOrdersResponse = await client.get({
       path: `orders/${shopifyOrderId}/fulfillment_orders`
     });
 
-    console.log('🔍 Fulfillment orders API response:', JSON.stringify(fulfillmentOrdersResponse.body, null, 2));
-
     const fulfillmentOrders = fulfillmentOrdersResponse.body.fulfillment_orders || [];
 
     console.log(`📦 Found ${fulfillmentOrders.length} fulfillment orders for order ${shopifyOrderId}`);
-    if (fulfillmentOrders.length > 0) {
-      console.log('📦 Fulfillment orders:', JSON.stringify(fulfillmentOrders, null, 2));
-    }
-
+    
+    // For digital products with no shipping, there may be no fulfillment orders
     if (fulfillmentOrders.length === 0) {
-      console.log('❌ No fulfillment orders found for order:', shopifyOrderId);
-      console.log('💡 Order likely has no shipping address or product not configured as physical');
-      console.log('💡 Skipping fulfillment - configure products as "physical" to enable auto-fulfillment');
-
-      // Can't fulfill without fulfillment_orders - licenses were delivered, so just skip
-      return { success: true, method: 'no_fulfillment_orders', reason: 'Product not configured for fulfillment' };
+      console.log('💡 No fulfillment orders found - this is common for digital products');
+      console.log('💡 Order is considered fulfilled once license keys are delivered via email');
+      return { success: true, method: 'digital_no_fulfillment', reason: 'Digital product - no shipping required' };
     }
 
-    // Find the fulfillment order that contains our line item
+    // Step 3: Find the fulfillment order that contains our line item
     let targetFulfillmentOrder = null;
+    let targetLineItem = null;
+    
     for (const fo of fulfillmentOrders) {
-      const lineItemIds = fo.line_items?.map(li => li.line_item_id) || [];
-      if (lineItemIds.includes(parseInt(lineItemId))) {
+      // Skip if not open or scheduled
+      if (fo.status !== 'open' && fo.status !== 'scheduled') {
+        console.log(`⏭️ Skipping fulfillment order ${fo.id} with status: ${fo.status}`);
+        continue;
+      }
+      
+      const lineItems = fo.line_items || [];
+      
+      // Try to find the specific line item
+      const matchingLineItem = lineItems.find(li => li.line_item_id === parseInt(lineItemId));
+      
+      if (matchingLineItem) {
         targetFulfillmentOrder = fo;
+        targetLineItem = matchingLineItem;
+        console.log(`✅ Found matching fulfillment order ${fo.id} for line item ${lineItemId}`);
         break;
       }
     }
 
-    // If not found, use the first open fulfillment order
+    // If no specific match found, use the first open fulfillment order
     if (!targetFulfillmentOrder) {
-      targetFulfillmentOrder = fulfillmentOrders.find(fo => fo.status === 'open');
+      targetFulfillmentOrder = fulfillmentOrders.find(fo => fo.status === 'open' || fo.status === 'scheduled');
+      
+      if (!targetFulfillmentOrder) {
+        console.log('❌ No open fulfillment orders found for order:', shopifyOrderId);
+        return { success: false, reason: 'no_open_fulfillment_order' };
+      }
+      
+      // Use the first line item if we couldn't find a specific match
+      targetLineItem = targetFulfillmentOrder.line_items?.[0];
+      console.log(`⚠️ No exact line item match, using first item in fulfillment order ${targetFulfillmentOrder.id}`);
     }
 
-    if (!targetFulfillmentOrder) {
-      console.log('No open fulfillment order found for order:', shopifyOrderId);
-      return { success: false, reason: 'no_open_fulfillment_order' };
+    if (!targetLineItem) {
+      console.log('❌ No line items found in fulfillment order');
+      return { success: false, reason: 'no_line_items' };
     }
 
-    // Step 2: Create fulfillment using the new API
+    // Step 4: Get shop location (required for fulfillment)
+    let locationId = targetFulfillmentOrder.assigned_location_id;
+    
+    // If no location assigned, get the default location
+    if (!locationId) {
+      console.log('🔍 No location assigned to fulfillment order, fetching shop locations...');
+      try {
+        const locationsResponse = await client.get({
+          path: 'locations'
+        });
+        const locations = locationsResponse.body.locations || [];
+        
+        if (locations.length > 0) {
+          // Use the first active location
+          const activeLocation = locations.find(loc => loc.active) || locations[0];
+          locationId = activeLocation.id;
+          console.log(`📍 Using location: ${activeLocation.name} (ID: ${locationId})`);
+        }
+      } catch (locError) {
+        console.warn('⚠️ Could not fetch locations:', locError.message);
+        // Continue without location - Shopify may auto-assign
+      }
+    }
+
+    // Step 5: Create fulfillment
     const fulfillmentData = {
       fulfillment: {
         line_items_by_fulfillment_order: [
@@ -145,31 +182,54 @@ async function fulfillShopifyOrder(shopDomain, accessToken, shopifyOrderId, line
             fulfillment_order_id: targetFulfillmentOrder.id,
             fulfillment_order_line_items: [
               {
-                id: targetFulfillmentOrder.line_items.find(li => li.line_item_id === parseInt(lineItemId))?.id || targetFulfillmentOrder.line_items[0].id,
-                quantity: 1
+                id: targetLineItem.id,  // This is the fulfillment_order_line_item id, not the order line_item id
+                quantity: targetLineItem.quantity
               }
             ]
           }
         ],
-        notify_customer: false // We already sent our own email
+        notify_customer: false, // We already sent our own email with license keys
+        ...(locationId && { location_id: locationId }) // Include location_id if available
       }
     };
 
-    await client.post({
+    console.log('📤 Creating fulfillment with data:', JSON.stringify(fulfillmentData, null, 2));
+
+    const fulfillmentResponse = await client.post({
       path: 'fulfillments',
       data: fulfillmentData
     });
 
-    console.log(`✅ Fulfilled Shopify order ${shopifyOrderId} line item ${lineItemId}`);
-    return { success: true };
+    console.log(`✅ Successfully fulfilled order ${shopifyOrderId}`);
+    console.log('📦 Fulfillment response:', JSON.stringify(fulfillmentResponse.body, null, 2));
+    
+    return { 
+      success: true, 
+      fulfillmentId: fulfillmentResponse.body.fulfillment?.id,
+      status: fulfillmentResponse.body.fulfillment?.status
+    };
 
   } catch (error) {
     // Don't fail the entire order process if fulfillment fails
     console.error(`⚠️ Failed to fulfill Shopify order ${shopifyOrderId}:`, error.message);
+    
     if (error.response?.body) {
-      console.error('Shopify error details:', JSON.stringify(error.response.body, null, 2));
+      console.error('❌ Shopify error details:', JSON.stringify(error.response.body, null, 2));
+      
+      // Log specific error information
+      const errors = error.response.body.errors;
+      if (errors) {
+        if (typeof errors === 'object') {
+          Object.entries(errors).forEach(([field, messages]) => {
+            console.error(`   - ${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`);
+          });
+        } else {
+          console.error(`   - ${errors}`);
+        }
+      }
     }
-    return { success: false, error: error.message };
+    
+    return { success: false, error: error.message, details: error.response?.body };
   }
 }
 
@@ -632,3 +692,5 @@ export async function manualAllocate(orderId) {
     connection.release();
   }
 }
+
+export { processOrder, fulfillShopifyOrder };
