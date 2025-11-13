@@ -484,11 +484,14 @@ export async function isTrialExpired(shopId) {
 export async function canProcessOrder(shopId, shopDomain) {
   try {
     const subscription = await getShopSubscription(shopDomain);
-    const [limits, orderCount, trialExpired] = await Promise.all([
+    const [limits, orderCount, trialExpired, shopInfo] = await Promise.all([
       getPlanLimits(shopDomain),
       getMonthlyOrderCount(shopId),
-      isTrialExpired(shopId)
+      isTrialExpired(shopId),
+      db.query('SELECT access_token FROM shops WHERE id = ?', [shopId])
     ]);
+
+    const accessToken = shopInfo[0]?.[0]?.access_token;
 
     console.log('🔍 Billing check:', {
       shopDomain,
@@ -497,20 +500,45 @@ export async function canProcessOrder(shopId, shopDomain) {
       planKey: subscription?.plan_key,
       limits,
       orderCount,
-      trialExpired
+      trialExpired,
+      hasToken: !!accessToken
     });
 
-    // If on FREE plan and trial has expired, block orders
-    if ((!subscription || !subscription.subscription_id) && trialExpired) {
-      console.log('❌ Trial expired, blocking order');
-      return {
-        allowed: false,
-        current: orderCount,
-        limit: 0,
-        remaining: 0,
-        reason: 'trial_expired',
-        message: 'Your 7-day free trial has expired. Please upgrade to a paid plan to continue processing orders.'
-      };
+    // If on FREE plan and trial has expired in our DB, check Shopify's actual status
+    if ((!subscription || !subscription.subscription_id) && trialExpired && accessToken) {
+      console.log('⚠️ Local trial expired, checking Shopify subscription status...');
+
+      // Check if Shopify has granted them a subscription or trial
+      try {
+        const shopifyStatus = await hasActiveSubscription(shopDomain, accessToken);
+
+        if (shopifyStatus.hasActive) {
+          console.log('✅ Shopify reports active subscription/trial, allowing order');
+          // Sync the subscription to our database
+          await saveSubscriptionToDatabase(shopDomain, shopifyStatus.subscription, 'FREE');
+        } else {
+          console.log('❌ No active Shopify subscription and local trial expired, blocking order');
+          return {
+            allowed: false,
+            current: orderCount,
+            limit: 0,
+            remaining: 0,
+            reason: 'trial_expired',
+            message: 'Your 7-day free trial has expired. Please upgrade to a paid plan to continue processing orders.'
+          };
+        }
+      } catch (error) {
+        console.error('Error checking Shopify subscription status:', error);
+        // If we can't check Shopify, block to be safe
+        return {
+          allowed: false,
+          current: orderCount,
+          limit: 0,
+          remaining: 0,
+          reason: 'trial_expired',
+          message: 'Your 7-day free trial has expired. Please upgrade to a paid plan to continue processing orders.'
+        };
+      }
     }
 
     const maxOrders = limits.maxOrdersPerMonth;
