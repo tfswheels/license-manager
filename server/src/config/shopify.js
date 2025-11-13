@@ -4,22 +4,11 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Debug: Log the raw scopes from environment to diagnose Railway variable issue
-console.log('🔍 DEBUG SHOPIFY_SCOPES raw:', JSON.stringify(process.env.SHOPIFY_SCOPES));
-console.log('🔍 DEBUG SHOPIFY_SCOPES length:', process.env.SHOPIFY_SCOPES?.length);
-console.log('🔍 DEBUG SHOPIFY_OPTIONAL_SCOPES raw:', JSON.stringify(process.env.SHOPIFY_OPTIONAL_SCOPES));
-
-// Split scopes and trim whitespace from each scope
+// Parse scopes from environment variables
 const scopesArray = process.env.SHOPIFY_SCOPES?.split(',').map(s => s.trim()) || [];
 const optionalScopesArray = process.env.SHOPIFY_OPTIONAL_SCOPES?.split(',').map(s => s.trim()).filter(Boolean) || [];
 
-console.log('🔍 DEBUG Required scopes array:', scopesArray);
-console.log('🔍 DEBUG Optional scopes array:', optionalScopesArray);
-console.log('🔍 DEBUG Number of required scopes:', scopesArray.length);
-console.log('🔍 DEBUG Number of optional scopes:', optionalScopesArray.length);
-
-// Combine required and optional scopes for the OAuth request
-// Shopify will request all of them, but we'll only validate required ones
+// Combine required and optional scopes for OAuth request
 const allScopesArray = [...scopesArray, ...optionalScopesArray];
 
 export const shopify = shopifyApi({

@@ -36,33 +36,17 @@ router.get('/install', async (req, res) => {
 });
 
 router.get('/callback', async (req, res) => {
-  console.log('🔵 CALLBACK HIT - Query params:', req.query);
-  
   try {
-    console.log('🔵 Starting shopify.auth.callback...');
-    
     const callback = await shopify.auth.callback({
       rawRequest: req,
       rawResponse: res
     });
 
-    console.log('🔵 Callback completed, got session');
-
     const { session } = callback;
     const { shop, accessToken } = session;
 
-    console.log('🔵 Shop:', shop);
-    console.log('🔵 Token preview:', accessToken?.substring(0, 20) + '...');
-    console.log('🔵 Scopes:', session.scope);
-
-    console.log('🔵 Attempting database insert...');
-
-    // DEBUG: Check which database we're actually using
-    const [dbCheck] = await db.execute('SELECT DATABASE() as current_db');
-    console.log('🔍 CURRENT DATABASE:', dbCheck[0].current_db);
-    console.log('🔍 ENV DB_NAME:', process.env.DB_NAME);
-
-    const [result] = await db.execute(
+    // Store shop credentials and scopes
+    await db.execute(
       `INSERT INTO shops (shop_domain, access_token, scopes, trial_expires_at)
        VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))
        ON DUPLICATE KEY UPDATE
@@ -72,10 +56,9 @@ router.get('/callback', async (req, res) => {
       [shop, accessToken, session.scope]
     );
 
-    console.log('🔵 Database result:', result);
-    console.log(`✅ Shop installed: ${shop}`);
+    console.log(`Shop installed: ${shop}`);
 
-    // Get the shop ID to create default template
+    // Get shop ID for default template
     const [shopRows] = await db.execute(
       'SELECT id FROM shops WHERE shop_domain = ?',
       [shop]
@@ -85,22 +68,16 @@ router.get('/callback', async (req, res) => {
     // Create default email template if this is a new installation
     await createDefaultTemplate(shopId);
 
-    console.log('🔵 Registering webhooks...');
+    // Register webhooks
     await registerWebhooks(shop, accessToken);
 
-    console.log('🔵 Redirecting to Shopify Admin...');
-
-    // For embedded apps, redirect back to Shopify Admin to load the app in iframe
-    // This ensures proper App Bridge initialization and avoids "page not found" errors
+    // Redirect to Shopify Admin
     const apiKey = process.env.SHOPIFY_API_KEY;
     const redirectUrl = `https://${shop}/admin/apps/${apiKey}?installing=true`;
-
-    console.log(`🔵 Redirecting to: ${redirectUrl}`);
     res.redirect(redirectUrl);
 
   } catch (error) {
-    console.error('❌ OAuth callback error:', error);
-    console.error('❌ Error stack:', error.stack);
+    console.error('OAuth callback error:', error);
     res.status(500).send('Installation failed. Please try again.');
   }
 });
@@ -325,29 +302,13 @@ router.get('/status', async (req, res) => {
           session: { shop, accessToken: rows[0].access_token }
         });
 
-        // Make a lightweight API call to test token validity
         await client.get({ path: 'shop' });
         tokenIsValid = true;
-        console.log('✅ Access token is valid');
       } catch (error) {
-        console.log('❌ Access token is invalid or revoked:', error.message);
+        console.error(`Access token invalid for ${shop}:`, error.message);
         tokenIsValid = false;
       }
     }
-
-    console.log('🔍 Scope Check:', {
-      shop,
-      required: requiredScopes,
-      optional: optionalScopes,
-      current: currentScopes,
-      grantedOptional: grantedOptionalScopes,
-      match: scopesMatch,
-      hasToken: !!rows[0].access_token,
-      tokenIsValid,
-      tokenPreview: rows[0].access_token ? rows[0].access_token.substring(0, 20) + '...' : 'NONE',
-      installedAt: rows[0].installed_at,
-      updatedAt: rows[0].updated_at
-    });
 
     res.json({
       installed: true,
