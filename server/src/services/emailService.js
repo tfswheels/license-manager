@@ -136,6 +136,12 @@ export async function sendLicenseEmail({
 
     msg.replyTo = replyToEmail;
 
+    // Add BCC if enabled in settings
+    if (settings?.bcc_notification_email && settings?.notification_email) {
+      msg.bcc = settings.notification_email;
+      console.log(`📧 BCC enabled, copying to: ${settings.notification_email}`);
+    }
+
     await sgMail.send(msg);
     console.log(`✅ Email sent to ${email} using template: ${template.template_name} from ${fromEmail}`);
 

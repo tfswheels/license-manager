@@ -575,6 +575,21 @@ export default function SystemSettings() {
                     </p>
                   </div>
                 )}
+
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={settings.bcc_notification_email || false}
+                    onChange={(e) => updateSetting('bcc_notification_email', e.target.checked)}
+                    className="mt-1 w-4 h-4 text-blue-600 rounded"
+                  />
+                  <div>
+                    <div className="font-medium text-gray-900">BCC on license delivery emails</div>
+                    <div className="text-sm text-gray-600">
+                      Send a copy of all customer license delivery emails to the notification email address
+                    </div>
+                  </div>
+                </label>
               </div>
             )}
           </div>

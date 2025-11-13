@@ -9,6 +9,59 @@ import { shopify } from '../config/shopify.js';
 /**
  * Mark a Shopify order as fulfilled after successful license delivery
  */
+/**
+ * Add timeline note and DigiKey tag to Shopify order
+ */
+async function addOrderTimelineAndTag(shopDomain, accessToken, shopifyOrderId, orderNum) {
+  if (!shopifyOrderId || shopifyOrderId.startsWith('MANUAL-')) {
+    return;
+  }
+
+  try {
+    const client = new shopify.clients.Rest({
+      session: { shop: shopDomain, accessToken }
+    });
+
+    // Add note to order timeline
+    await client.post({
+      path: `orders/${shopifyOrderId}/note_attributes`,
+      data: {
+        note_attribute: {
+          name: 'DigiKey HQ',
+          value: `License keys delivered automatically by DigiKey HQ at ${new Date().toISOString()}`
+        }
+      }
+    });
+
+    // Get current order to preserve existing tags
+    const orderResponse = await client.get({
+      path: `orders/${shopifyOrderId}`
+    });
+    const currentTags = orderResponse.body.order.tags || '';
+
+    // Add DigiKey tag if not already present
+    const tags = currentTags.split(',').map(t => t.trim()).filter(Boolean);
+    if (!tags.includes('DigiKey')) {
+      tags.push('DigiKey');
+    }
+
+    // Update order with new tags
+    await client.put({
+      path: `orders/${shopifyOrderId}`,
+      data: {
+        order: {
+          tags: tags.join(', ')
+        }
+      }
+    });
+
+    console.log(`✅ Added DigiKey timeline note and tag to order ${orderNum}`);
+  } catch (error) {
+    console.error(`⚠️ Failed to add timeline/tag to order ${orderNum}:`, error.message);
+    // Don't throw - this is not critical enough to fail the whole order
+  }
+}
+
 async function fulfillShopifyOrder(shopDomain, accessToken, shopifyOrderId, lineItemId) {
   try {
     // Don't try to fulfill manual orders
@@ -20,6 +73,16 @@ async function fulfillShopifyOrder(shopDomain, accessToken, shopifyOrderId, line
     const client = new shopify.clients.Rest({
       session: { shop: shopDomain, accessToken }
     });
+
+    // Debug: Get the full order details first to see fulfillment status
+    console.log(`🔍 Fetching order details for ${shopifyOrderId}...`);
+    const orderResponse = await client.get({
+      path: `orders/${shopifyOrderId}`
+    });
+    const order = orderResponse.body.order;
+    console.log(`🔍 Order fulfillment_status: ${order.fulfillment_status}`);
+    console.log(`🔍 Order financial_status: ${order.financial_status}`);
+    console.log(`🔍 Order requires_shipping: ${order.line_items?.[0]?.requires_shipping}`);
 
     // Step 1: Get fulfillment orders for this order
     const fulfillmentOrdersResponse = await client.get({
@@ -36,6 +99,7 @@ async function fulfillShopifyOrder(shopDomain, accessToken, shopifyOrderId, line
     if (fulfillmentOrders.length === 0) {
       console.log('❌ No fulfillment orders found for order:', shopifyOrderId);
       console.log('💡 This usually means the product is not set to require fulfillment/shipping');
+      console.log(`💡 Check product settings: requires_shipping = ${order.line_items?.[0]?.requires_shipping}`);
       return { success: false, reason: 'no_fulfillment_orders' };
     }
 
@@ -315,6 +379,9 @@ export async function processOrder(shopDomain, orderData) {
     await connection.commit();
     const orderNum = orderData.name || orderData.order_number || `#${orderData.id}`;
     console.log(`✅ Order ${orderNum} processed successfully`);
+
+    // Add timeline note and tag to Shopify order
+    await addOrderTimelineAndTag(shopDomain, accessToken, orderData.id?.toString(), orderNum);
 
     return { success: true, orderId };
 
