@@ -88,7 +88,12 @@ export default function ShopifyAppBridgeProvider({ children }) {
         const needsOAuth = !data.installed || !data.scopesMatch || !data.tokenIsValid;
 
         if (needsOAuth) {
-          if (installing === 'true') {
+          // Special case: If shop IS installed but scopes don't match or token is invalid,
+          // ALWAYS redirect to OAuth even if installing=true
+          // Only wait/poll if shop is NOT installed yet (OAuth just completed, DB not synced)
+          const needsReauth = data.installed && (!data.scopesMatch || !data.tokenIsValid);
+
+          if (installing === 'true' && !needsReauth) {
             // OAuth already happened (we have installing param), just waiting for DB sync
             // Keep loading screen showing by NOT setting isInitialCheck to false
             console.log('⏳ Installation in progress, waiting for database sync...');
