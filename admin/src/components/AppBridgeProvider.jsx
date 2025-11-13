@@ -56,7 +56,10 @@ export default function ShopifyAppBridgeProvider({ children }) {
   useEffect(() => {
     const checkAndRedirectIfNeeded = async () => {
       // Only check if we have a shop parameter
-      if (!shop) return;
+      if (!shop) {
+        console.log('⚠️ No shop parameter found');
+        return;
+      }
 
       // Skip if already complete
       if (isInstallingComplete) return;
@@ -69,10 +72,14 @@ export default function ShopifyAppBridgeProvider({ children }) {
 
       try {
         console.log('🔍 Checking if shop is installed:', shop);
+        console.log('🔍 URL params:', { shop, host, installing });
+        console.log('🔍 Full URL:', window.location.href);
 
         // Check if shop exists in database and has correct scopes
         const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/status?shop=${shop}`);
         const data = await response.json();
+
+        console.log('🔍 Status response:', data);
 
         // Need to redirect to OAuth if:
         // 1. Shop not installed at all, OR
