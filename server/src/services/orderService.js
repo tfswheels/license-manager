@@ -22,22 +22,13 @@ async function addOrderTimelineAndTag(shopDomain, accessToken, shopifyOrderId, o
       session: { shop: shopDomain, accessToken }
     });
 
-    // Add note to order timeline
-    await client.post({
-      path: `orders/${shopifyOrderId}/note_attributes`,
-      data: {
-        note_attribute: {
-          name: 'DigiKey HQ',
-          value: `License keys delivered automatically by DigiKey HQ at ${new Date().toISOString()}`
-        }
-      }
-    });
-
-    // Get current order to preserve existing tags
+    // Get current order to preserve existing data
     const orderResponse = await client.get({
       path: `orders/${shopifyOrderId}`
     });
-    const currentTags = orderResponse.body.order.tags || '';
+    const order = orderResponse.body.order;
+    const currentTags = order.tags || '';
+    const currentNote = order.note || '';
 
     // Add DigiKey tag if not already present
     const tags = currentTags.split(',').map(t => t.trim()).filter(Boolean);
@@ -45,19 +36,29 @@ async function addOrderTimelineAndTag(shopDomain, accessToken, shopifyOrderId, o
       tags.push('DigiKey');
     }
 
-    // Update order with new tags
+    // Append timeline note to existing note (Shopify only has one note field per order)
+    const timestamp = new Date().toLocaleString('en-US', { timeZone: 'UTC' });
+    const newNote = currentNote
+      ? `${currentNote}\n\n[${timestamp}] DigiKey HQ: License keys delivered automatically`
+      : `[${timestamp}] DigiKey HQ: License keys delivered automatically`;
+
+    // Update order with tags and note in single request
     await client.put({
       path: `orders/${shopifyOrderId}`,
       data: {
         order: {
-          tags: tags.join(', ')
+          tags: tags.join(', '),
+          note: newNote
         }
       }
     });
 
-    console.log(`✅ Added DigiKey timeline note and tag to order ${orderNum}`);
+    console.log(`✅ Added DigiKey note and tag to order ${orderNum}`);
   } catch (error) {
-    console.error(`⚠️ Failed to add timeline/tag to order ${orderNum}:`, error.message);
+    console.error(`⚠️ Failed to add note/tag to order ${orderNum}:`, error.message);
+    if (error.response?.body) {
+      console.error('Shopify error details:', JSON.stringify(error.response.body, null, 2));
+    }
     // Don't throw - this is not critical enough to fail the whole order
   }
 }
@@ -98,9 +99,32 @@ async function fulfillShopifyOrder(shopDomain, accessToken, shopifyOrderId, line
 
     if (fulfillmentOrders.length === 0) {
       console.log('❌ No fulfillment orders found for order:', shopifyOrderId);
-      console.log('💡 This usually means the product is not set to require fulfillment/shipping');
-      console.log(`💡 Check product settings: requires_shipping = ${order.line_items?.[0]?.requires_shipping}`);
-      return { success: false, reason: 'no_fulfillment_orders' };
+      console.log('💡 Order likely has no shipping address (common for digital products)');
+      console.log(`💡 Attempting legacy fulfillment API as fallback...`);
+
+      // Fallback: Use legacy fulfillment API for orders without fulfillment_orders
+      // This happens when orders have no shipping address
+      try {
+        await client.post({
+          path: `orders/${shopifyOrderId}/fulfillments`,
+          data: {
+            fulfillment: {
+              location_id: null, // Auto-assign location
+              tracking_number: null,
+              notify_customer: false
+            }
+          }
+        });
+
+        console.log(`✅ Fulfilled order ${shopifyOrderId} using legacy API (no shipping address)`);
+        return { success: true, method: 'legacy' };
+      } catch (legacyError) {
+        console.error(`❌ Legacy fulfillment also failed:`, legacyError.message);
+        if (legacyError.response?.body) {
+          console.error('Shopify error:', JSON.stringify(legacyError.response.body, null, 2));
+        }
+        return { success: false, reason: 'no_fulfillment_orders' };
+      }
     }
 
     // Find the fulfillment order that contains our line item
