@@ -99,13 +99,11 @@ async function fulfillShopifyOrder(shopDomain, accessToken, shopifyOrderId, line
 
     if (fulfillmentOrders.length === 0) {
       console.log('❌ No fulfillment orders found for order:', shopifyOrderId);
-      console.log('💡 Order likely has no shipping address (common for digital products)');
-      console.log('💡 Skipping fulfillment for digital product - licenses already delivered via email');
+      console.log('💡 Order likely has no shipping address or product not configured as physical');
+      console.log('💡 Skipping fulfillment - configure products as "physical" to enable auto-fulfillment');
 
-      // For digital products without shipping, we don't need to create a Shopify fulfillment
-      // The order is considered "fulfilled" once the license keys are delivered via email
-      // Shopify's fulfillment API is primarily for tracking physical shipments
-      return { success: true, method: 'digital_no_fulfillment', reason: 'Digital product - no shipping required' };
+      // Can't fulfill without fulfillment_orders - licenses were delivered, so just skip
+      return { success: true, method: 'no_fulfillment_orders', reason: 'Product not configured for fulfillment' };
     }
 
     // Find the fulfillment order that contains our line item
