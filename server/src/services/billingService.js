@@ -490,8 +490,19 @@ export async function canProcessOrder(shopId, shopDomain) {
       isTrialExpired(shopId)
     ]);
 
+    console.log('🔍 Billing check:', {
+      shopDomain,
+      hasSubscription: !!subscription,
+      subscriptionId: subscription?.subscription_id,
+      planKey: subscription?.plan_key,
+      limits,
+      orderCount,
+      trialExpired
+    });
+
     // If on FREE plan and trial has expired, block orders
     if ((!subscription || !subscription.subscription_id) && trialExpired) {
+      console.log('❌ Trial expired, blocking order');
       return {
         allowed: false,
         current: orderCount,
@@ -503,6 +514,7 @@ export async function canProcessOrder(shopId, shopDomain) {
     }
 
     const maxOrders = limits.maxOrdersPerMonth;
+    console.log('📊 Max orders for plan:', maxOrders);
 
     // -1 means unlimited
     if (maxOrders === -1) {

@@ -668,6 +668,7 @@ function ProductLicenses() {
                   <th className="text-left py-3 px-4 font-medium text-gray-700">License Key</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-700">Status</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-700">Order</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-700">Email</th>
                   <th className="text-right py-3 px-4 font-medium text-gray-700">Actions</th>
                 </tr>
               </thead>
@@ -704,6 +705,9 @@ function ProductLicenses() {
                     </td>
                     <td className="py-3 px-4 text-sm text-gray-600">
                       {license.order_number || '-'}
+                    </td>
+                    <td className="py-3 px-4 text-sm text-gray-600">
+                      {license.customer_email || '-'}
                     </td>
                     <td className="py-3 px-4 text-right">
                       <div className="flex items-center justify-end gap-2">

@@ -1021,7 +1021,7 @@ router.get('/products/:productId/licenses', async (req, res) => {
     const { allocated } = req.query;
 
     let query = `
-      SELECT l.*, o.order_number
+      SELECT l.*, o.order_number, o.customer_email
       FROM licenses l
       LEFT JOIN orders o ON l.order_id = o.id
       WHERE l.product_id = ?
