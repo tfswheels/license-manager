@@ -100,23 +100,51 @@ async function fulfillShopifyOrder(shopDomain, accessToken, shopifyOrderId, line
     if (fulfillmentOrders.length === 0) {
       console.log('❌ No fulfillment orders found for order:', shopifyOrderId);
       console.log('💡 Order likely has no shipping address (common for digital products)');
-      console.log(`💡 Attempting legacy fulfillment API as fallback...`);
+      console.log(`💡 Attempting legacy fulfillment API with proper location...`);
 
       // Fallback: Use legacy fulfillment API for orders without fulfillment_orders
       // This happens when orders have no shipping address
       try {
+        // Get the shop's primary location
+        const locationsResponse = await client.get({
+          path: 'locations'
+        });
+        const primaryLocation = locationsResponse.body.locations.find(loc => loc.active) || locationsResponse.body.locations[0];
+
+        if (!primaryLocation) {
+          console.error('❌ No active location found for shop');
+          return { success: false, reason: 'no_location' };
+        }
+
+        console.log(`📍 Using location: ${primaryLocation.name} (ID: ${primaryLocation.id})`);
+
+        // Find the line item to fulfill
+        const lineItemToFulfill = order.line_items.find(li => li.id?.toString() === lineItemId);
+
+        if (!lineItemToFulfill) {
+          console.error(`❌ Line item ${lineItemId} not found in order`);
+          return { success: false, reason: 'line_item_not_found' };
+        }
+
+        // Create fulfillment with proper line items
         await client.post({
           path: `orders/${shopifyOrderId}/fulfillments`,
           data: {
             fulfillment: {
-              location_id: null, // Auto-assign location
+              location_id: primaryLocation.id,
               tracking_number: null,
-              notify_customer: false
+              notify_customer: false,
+              line_items: [
+                {
+                  id: lineItemToFulfill.id,
+                  quantity: lineItemToFulfill.quantity
+                }
+              ]
             }
           }
         });
 
-        console.log(`✅ Fulfilled order ${shopifyOrderId} using legacy API (no shipping address)`);
+        console.log(`✅ Fulfilled order ${shopifyOrderId} using legacy API (location: ${primaryLocation.name})`);
         return { success: true, method: 'legacy' };
       } catch (legacyError) {
         console.error(`❌ Legacy fulfillment also failed:`, legacyError.message);
