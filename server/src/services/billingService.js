@@ -307,6 +307,19 @@ export async function saveSubscriptionToDatabase(shopDomain, subscriptionData, p
     };
     const dbStatus = statusMap[subscriptionData.status] || 'trial';
 
+    // Convert ISO 8601 datetime to MySQL format
+    let currentPeriodEnd = null;
+    if (subscriptionData.currentPeriodEnd) {
+      try {
+        // Convert from "2025-12-19T17:56:08Z" to "2025-12-19 17:56:08"
+        const date = new Date(subscriptionData.currentPeriodEnd);
+        currentPeriodEnd = date.toISOString().slice(0, 19).replace('T', ' ');
+      } catch (e) {
+        console.error('Error parsing currentPeriodEnd date:', e);
+        currentPeriodEnd = null;
+      }
+    }
+
     await db.query(`
       INSERT INTO subscriptions (
         shop_id,
@@ -331,7 +344,7 @@ export async function saveSubscriptionToDatabase(shopDomain, subscriptionData, p
       dbStatus,
       BILLING_PLANS[planKey].price,
       subscriptionData.trialDays || 0,
-      subscriptionData.currentPeriodEnd || null
+      currentPeriodEnd
     ]);
 
     console.log(`✅ Subscription saved for shop ${shopDomain}: ${planKey} → ${dbPlanEnum}`);
