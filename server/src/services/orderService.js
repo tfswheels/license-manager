@@ -86,9 +86,12 @@ async function fulfillShopifyOrder(shopDomain, accessToken, shopifyOrderId, line
     console.log(`🔍 Order requires_shipping: ${order.line_items?.[0]?.requires_shipping}`);
 
     // Step 1: Get fulfillment orders for this order
+    console.log(`🔍 Fetching fulfillment orders for order ${shopifyOrderId}...`);
     const fulfillmentOrdersResponse = await client.get({
       path: `orders/${shopifyOrderId}/fulfillment_orders`
     });
+
+    console.log('🔍 Fulfillment orders API response:', JSON.stringify(fulfillmentOrdersResponse.body, null, 2));
 
     const fulfillmentOrders = fulfillmentOrdersResponse.body.fulfillment_orders || [];
 
