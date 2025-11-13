@@ -693,4 +693,4 @@ export async function manualAllocate(orderId) {
   }
 }
 
-export { processOrder, fulfillShopifyOrder };
+export { fulfillShopifyOrder };
