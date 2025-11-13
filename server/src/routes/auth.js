@@ -290,7 +290,7 @@ router.get('/status', async (req, res) => {
     }
 
     const [rows] = await db.execute(
-      'SELECT shop_domain, scopes, installed_at FROM shops WHERE shop_domain = ?',
+      'SELECT shop_domain, scopes, access_token, installed_at, updated_at FROM shops WHERE shop_domain = ?',
       [shop]
     );
 
@@ -315,16 +315,22 @@ router.get('/status', async (req, res) => {
       shop,
       required: requiredScopes,
       current: currentScopes,
-      match: scopesMatch
+      match: scopesMatch,
+      hasToken: !!rows[0].access_token,
+      tokenPreview: rows[0].access_token ? rows[0].access_token.substring(0, 20) + '...' : 'NONE',
+      installedAt: rows[0].installed_at,
+      updatedAt: rows[0].updated_at
     });
 
     res.json({
       installed: true,
       shop: rows[0].shop_domain,
       installedAt: rows[0].installed_at,
+      updatedAt: rows[0].updated_at,
       scopesMatch,
       currentScopes: currentScopes,
-      requiredScopes: requiredScopes
+      requiredScopes: requiredScopes,
+      hasValidToken: !!rows[0].access_token
     });
 
   } catch (error) {
