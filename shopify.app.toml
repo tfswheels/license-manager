@@ -7,10 +7,11 @@ embedded = true
 [access_scopes]
 # Core scopes - write_orders implicitly includes read_orders
 # Adding assigned fulfillment scopes for modern Fulfillment Orders API
-# read_locations needed to query shop locations for legacy fulfillment API
-scopes = "read_products,read_customers,write_orders,write_assigned_fulfillment_orders,read_locations"
+scopes = "read_products,read_customers,write_orders,write_assigned_fulfillment_orders"
 
-optional_scopes = []
+# Optional scopes can be requested without triggering full reinstall
+# read_locations needed to query shop locations for legacy fulfillment API
+optional_scopes = ["read_locations"]
 
 [auth]
 redirect_urls = [
