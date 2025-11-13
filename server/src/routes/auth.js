@@ -302,14 +302,20 @@ router.get('/status', async (req, res) => {
     const requiredScopesStr = process.env.SHOPIFY_SCOPES || '';
     const requiredScopes = requiredScopesStr.split(',').map(s => s.trim()).filter(Boolean).sort();
 
+    // Get optional scopes from environment
+    const optionalScopesStr = process.env.SHOPIFY_OPTIONAL_SCOPES || '';
+    const optionalScopes = optionalScopesStr.split(',').map(s => s.trim()).filter(Boolean).sort();
+
     // Get current scopes from database
     const currentScopesStr = rows[0].scopes || '';
     const currentScopes = currentScopesStr.split(',').map(s => s.trim()).filter(Boolean).sort();
 
-    // Check if scopes match (both arrays should have same items)
-    const scopesMatch =
-      requiredScopes.length === currentScopes.length &&
-      requiredScopes.every((scope, index) => scope === currentScopes[index]);
+    // Check if REQUIRED scopes are present (optional scopes can be missing)
+    // All required scopes must be in currentScopes
+    const scopesMatch = requiredScopes.every(scope => currentScopes.includes(scope));
+
+    // Check which optional scopes the shop has
+    const grantedOptionalScopes = optionalScopes.filter(scope => currentScopes.includes(scope));
 
     // Validate the access token by making a test API call
     let tokenIsValid = false;
@@ -332,7 +338,9 @@ router.get('/status', async (req, res) => {
     console.log('🔍 Scope Check:', {
       shop,
       required: requiredScopes,
+      optional: optionalScopes,
       current: currentScopes,
+      grantedOptional: grantedOptionalScopes,
       match: scopesMatch,
       hasToken: !!rows[0].access_token,
       tokenIsValid,
@@ -350,6 +358,8 @@ router.get('/status', async (req, res) => {
       tokenIsValid,
       currentScopes: currentScopes,
       requiredScopes: requiredScopes,
+      optionalScopes: optionalScopes,
+      grantedOptionalScopes: grantedOptionalScopes,
       hasValidToken: !!rows[0].access_token && tokenIsValid
     });
 
