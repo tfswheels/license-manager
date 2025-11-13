@@ -84,6 +84,14 @@ async function fulfillShopifyOrder(shopDomain, accessToken, shopifyOrderId, line
     console.log(`🔍 Order fulfillment_status: ${order.fulfillment_status}`);
     console.log(`🔍 Order financial_status: ${order.financial_status}`);
     console.log(`🔍 Order requires_shipping: ${order.line_items?.[0]?.requires_shipping}`);
+    console.log(`🔍 Order line_items:`, JSON.stringify(order.line_items?.map(li => ({
+      id: li.id,
+      name: li.name,
+      requires_shipping: li.requires_shipping,
+      fulfillable_quantity: li.fulfillable_quantity,
+      fulfillment_service: li.fulfillment_service,
+      fulfillment_status: li.fulfillment_status
+    })), null, 2));
 
     // Step 1: Get fulfillment orders for this order
     console.log(`🔍 Fetching fulfillment orders for order ${shopifyOrderId}...`);
