@@ -439,6 +439,21 @@ export async function processOrder(shopDomain, orderData) {
 
   } catch (error) {
     await connection.rollback();
+
+    // Handle duplicate entry error gracefully (from concurrent webhook deliveries)
+    if (error.code === 'ER_DUP_ENTRY' && error.sqlMessage?.includes('unique_shopify_order')) {
+      const orderNum = orderData.name || orderData.order_number || `#${orderData.id}`;
+      console.log(`⚠️ Duplicate webhook detected for order ${orderNum} - already processed by concurrent request`);
+
+      // Fetch the existing order ID
+      const [existingOrders] = await connection.execute(
+        'SELECT id FROM orders WHERE shop_id = ? AND shopify_order_id = ?',
+        [shopId, orderData.id.toString()]
+      );
+
+      return { success: true, orderId: existingOrders[0]?.id, duplicate: true };
+    }
+
     console.error('Order processing error:', error);
     throw error;
   } finally {
