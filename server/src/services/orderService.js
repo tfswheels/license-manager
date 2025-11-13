@@ -127,40 +127,31 @@ async function fulfillShopifyOrder(shopDomain, accessToken, shopifyOrderId, line
         }
 
         // Create fulfillment with proper line items
-        const fulfillmentPayload = {
-          fulfillment: {
-            location_id: primaryLocation.id,
-            notify_customer: false,
-            line_items: [
-              {
-                id: lineItemToFulfill.id,
-                quantity: lineItemToFulfill.quantity
-              }
-            ]
-          }
-        };
-
-        console.log('📤 Legacy fulfillment payload:', JSON.stringify(fulfillmentPayload, null, 2));
-
-        const fulfillmentResponse = await client.post({
+        await client.post({
           path: `orders/${shopifyOrderId}/fulfillments`,
-          data: fulfillmentPayload
+          data: {
+            fulfillment: {
+              location_id: primaryLocation.id,
+              tracking_number: null,
+              notify_customer: false,
+              line_items: [
+                {
+                  id: lineItemToFulfill.id,
+                  quantity: lineItemToFulfill.quantity
+                }
+              ]
+            }
+          }
         });
 
         console.log(`✅ Fulfilled order ${shopifyOrderId} using legacy API (location: ${primaryLocation.name})`);
-        console.log('📥 Fulfillment response:', JSON.stringify(fulfillmentResponse.body, null, 2));
         return { success: true, method: 'legacy' };
       } catch (legacyError) {
         console.error(`❌ Legacy fulfillment also failed:`, legacyError.message);
-        console.error('Error code:', legacyError.code);
-        console.error('Error response status:', legacyError.response?.statusCode);
-        console.error('Error response headers:', JSON.stringify(legacyError.response?.headers, null, 2));
         if (legacyError.response?.body) {
-          console.error('Shopify error body:', JSON.stringify(legacyError.response.body, null, 2));
-        } else {
-          console.error('No error body in response');
+          console.error('Shopify error:', JSON.stringify(legacyError.response.body, null, 2));
         }
-        return { success: false, reason: 'legacy_fulfillment_failed' };
+        return { success: false, reason: 'no_fulfillment_orders' };
       }
     }
 
