@@ -240,6 +240,17 @@ export async function processOrder(shopDomain, orderData) {
       return { success: true, orderId: existingOrders[0].id, duplicate: true };
     }
 
+    // Check payment status - only process paid orders
+    const financialStatus = orderData.financial_status;
+    const allowedStatuses = ['paid', 'partially_paid'];
+
+    if (!allowedStatuses.includes(financialStatus)) {
+      await connection.rollback();
+      const orderNum = orderData.name || orderData.order_number || `#${orderData.id}`;
+      console.log(`Order ${orderNum} skipped - payment status: ${financialStatus}`);
+      return { success: false, reason: 'payment_not_captured', status: financialStatus };
+    }
+
     // Get shop settings for this order
     const settings = await getShopSettings(shopId);
 
