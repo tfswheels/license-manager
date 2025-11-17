@@ -251,6 +251,24 @@ export async function processOrder(shopDomain, orderData) {
       return { success: false, reason: 'payment_not_captured', status: financialStatus };
     }
 
+    // Check fraud risk - skip orders with cancel or investigate recommendations
+    const risks = orderData.risks || [];
+    const highRisk = risks.find(risk =>
+      risk.recommendation === 'cancel' || risk.recommendation === 'investigate'
+    );
+
+    if (highRisk) {
+      await connection.rollback();
+      const orderNum = orderData.name || orderData.order_number || `#${orderData.id}`;
+      console.log(`Order ${orderNum} skipped - fraud risk: ${highRisk.recommendation} (${highRisk.message})`);
+      return {
+        success: false,
+        reason: 'fraud_risk',
+        recommendation: highRisk.recommendation,
+        message: highRisk.message
+      };
+    }
+
     // Get shop settings for this order
     const settings = await getShopSettings(shopId);
 
