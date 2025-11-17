@@ -121,7 +121,7 @@ function Orders() {
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-2">
                           <div>
-                            <p className="font-medium text-gray-900">#{order.order_number}</p>
+                            <p className="font-medium text-gray-900">{order.order_number}</p>
                             <p className="text-xs text-gray-500">ID: {order.shopify_order_id}</p>
                           </div>
                           {order.order_type === 'manual' && (

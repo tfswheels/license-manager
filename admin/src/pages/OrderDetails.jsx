@@ -120,7 +120,7 @@ function OrderDetails() {
           <ArrowLeft className="w-4 h-4" />
         </button>
         <div className="flex-1">
-          <h1 className="text-3xl font-bold text-gray-900">Order #{order.order_number}</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Order {order.order_number}</h1>
           <p className="text-gray-500 mt-1">{order.shop_domain}</p>
         </div>
         {hasIssues && (
